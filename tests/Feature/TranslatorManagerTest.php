@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
+use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
 
@@ -43,4 +44,18 @@ it('resolves the facade to the manager', function () {
 
 it('does not clobber Laravel\'s own translator binding', function () {
     expect(app('translator'))->toBeInstanceOf(\Illuminate\Translation\Translator::class);
+});
+
+it('resolves the llm driver from config', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => 'gpt-4o-mini']);
+
+    expect(app(TranslatorManager::class)->driver('llm'))->toBeInstanceOf(LlmTranslator::class);
+});
+
+it('throws when the llm provider or model is missing', function () {
+    config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => null]);
+
+    expect(fn () => app(TranslatorManager::class)->driver('llm'))
+        ->toThrow(InvalidArgumentException::class);
 });
