@@ -8,6 +8,8 @@ use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
+use Prism\Prism\Facades\Prism;
+use Prism\Prism\Testing\TextResponseFake;
 
 beforeEach(function () {
     config()->set('translator.default', 'deepl');
@@ -58,6 +60,34 @@ it('throws when the llm provider or model is missing', function () {
     config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => null]);
 
     expect(fn () => app(TranslatorManager::class)->driver('llm'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('resolves a config-defined named LLM driver and tags results with its name', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.drivers.claude', [
+        'driver'   => 'llm',
+        'provider' => 'anthropic',
+        'model'    => 'claude-3-5-sonnet-latest',
+    ]);
+
+    Prism::fake([TextResponseFake::make()->withText('안녕')]);
+
+    $driver = app(TranslatorManager::class)->driver('claude');
+
+    expect($driver)->toBeInstanceOf(LlmTranslator::class)
+        ->and($driver->translate('Hello', 'ko')->driver)->toBe('claude');
+});
+
+it('throws for a named driver that is not configured', function () {
+    expect(fn () => app(TranslatorManager::class)->driver('does-not-exist'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('throws for a named driver config missing the driver type key', function () {
+    config()->set('translator.drivers.broken', ['provider' => 'anthropic', 'model' => 'x']);
+
+    expect(fn () => app(TranslatorManager::class)->driver('broken'))
         ->toThrow(InvalidArgumentException::class);
 });
 

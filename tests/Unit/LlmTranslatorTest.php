@@ -29,6 +29,16 @@ it('translates a single text via a text completion', function () {
     $fake->assertCallCount(1);
 });
 
+it('tags results with the configured driver name', function () {
+    Prism::fake([
+        TextResponseFake::make()->withText('안녕'),
+    ]);
+
+    $driver = new LlmTranslator('anthropic', 'claude-3-5-sonnet-latest', [], 'claude');
+
+    expect($driver->translate('Hello', 'ko')->driver)->toBe('claude');
+});
+
 it('includes the target language in the system prompt', function () {
     $fake = Prism::fake([
         TextResponseFake::make()->withText('Hola'),
