@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Drivers;
 
-use Google\Cloud\Translate\V3\Client\TranslationServiceClient;
-use Google\Cloud\Translate\V3\Translation;
-use Google\Cloud\Translate\V3\TranslateTextRequest;
-use Google\Cloud\Translate\V3\TranslateTextResponse;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Minhyung\LaravelTranslator\Contracts\Translator;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
- * Google Cloud Translation (v3) driver backed by the official
- * google/cloud-translate client, using the REST transport (no gRPC).
+ * Google Cloud Translation (v2) driver.
+ *
+ * Uses the simple REST endpoint authenticated with an API key, so no
+ * service-account credentials or gRPC are required.
  */
 class GoogleTranslator implements Translator
 {
     public function __construct(
-        protected TranslationServiceClient $client,
-        protected string $projectId,
-        protected string $location = 'global',
+        protected HttpFactory $http,
+        protected string $key,
+        protected string $endpoint = 'https://translation.googleapis.com/language/translate/v2',
     ) {
     }
 
@@ -44,46 +43,43 @@ class GoogleTranslator implements Translator
         }
 
         $keys = array_keys($texts);
+        $format = $options['format'] ?? 'text';
 
-        $request = TranslateTextRequest::build(
-            parent: $this->parent(),
-            targetLanguageCode: $targetLang,
-            contents: array_values($texts),
-        );
+        $payload = array_filter([
+            'q'      => array_values($texts),
+            'target' => $targetLang,
+            'source' => $sourceLang,
+            'format' => $format,
+        ], fn ($value): bool => $value !== null);
 
-        $request->setMimeType($options['mimeType'] ?? 'text/plain');
+        $translations = $this->http
+            ->withQueryParameters(['key' => $this->key])
+            ->asJson()
+            ->acceptJson()
+            ->post($this->endpoint, $payload)
+            ->throw()
+            ->json('data.translations', []);
 
-        if ($sourceLang !== null) {
-            $request->setSourceLanguageCode($sourceLang);
-        }
-
-        $response = $this->callApi($request);
-
-        $mapped = [];
-        foreach ($response->getTranslations() as $translation) {
-            /** @var Translation $translation */
-            $mapped[] = new TranslationResult(
-                text: $translation->getTranslatedText(),
+        $mapped = array_map(
+            fn (array $translation): TranslationResult => new TranslationResult(
+                text: $this->decode($translation['translatedText'] ?? '', $format),
                 targetLang: $targetLang,
                 driver: 'google',
-                detectedSourceLang: $sourceLang ?? ($translation->getDetectedLanguageCode() ?: null),
-            );
-        }
+                detectedSourceLang: $sourceLang ?? ($translation['detectedSourceLanguage'] ?? null),
+            ),
+            $translations,
+        );
 
         return array_combine($keys, $mapped);
     }
 
     /**
-     * Perform the actual API call. Extracted so it can be overridden in tests
-     * (the underlying client is a final class and cannot be mocked directly).
+     * The v2 API HTML-escapes translated text; undo it for plain-text output.
      */
-    protected function callApi(TranslateTextRequest $request): TranslateTextResponse
+    protected function decode(string $text, string $format): string
     {
-        return $this->client->translateText($request);
-    }
-
-    protected function parent(): string
-    {
-        return sprintf('projects/%s/locations/%s', $this->projectId, $this->location);
+        return $format === 'html'
+            ? $text
+            : html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 }

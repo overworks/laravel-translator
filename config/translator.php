@@ -32,13 +32,9 @@ return [
             'key' => env('DEEPL_AUTH_KEY'),
         ],
 
+        // Google Cloud Translation v2 — authenticated with a simple API key.
         'google' => [
-            'project_id' => env('GOOGLE_CLOUD_PROJECT'),
-            'location'   => env('GOOGLE_TRANSLATE_LOCATION', 'global'),
-
-            // Path to a service-account JSON key file (or a decoded array).
-            // Leave null to use Application Default Credentials.
-            'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+            'key' => env('GOOGLE_TRANSLATE_KEY'),
         ],
 
         // LLM-backed translation via Prism. Any driver name that is not a

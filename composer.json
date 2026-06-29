@@ -19,8 +19,9 @@
     "require": {
         "php": "^8.3",
         "deeplcom/deepl-php": "^1.19",
-        "google/cloud-translate": "^2.3",
+        "guzzlehttp/guzzle": "^7.0",
         "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/http": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
         "prism-php/prism": "^0.100",
         "psr/log": "^3.0"

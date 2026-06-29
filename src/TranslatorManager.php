@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator;
 
 use DeepL\DeepLClient;
-use Google\Cloud\Translate\V3\Client\TranslationServiceClient;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Manager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -46,28 +46,15 @@ class TranslatorManager extends Manager
 
     protected function createGoogleDriver(): Translator
     {
-        $config = $this->config()->get('translator.drivers.google', []);
+        $key = $this->config()->get('translator.drivers.google.key');
 
-        $projectId = $config['project_id'] ?? null;
-
-        if (empty($projectId)) {
+        if (empty($key)) {
             throw new InvalidArgumentException(
-                'The Google driver requires a project id. Set GOOGLE_CLOUD_PROJECT or translator.drivers.google.project_id.'
+                'The Google driver requires an API key. Set GOOGLE_TRANSLATE_KEY or translator.drivers.google.key.'
             );
         }
 
-        // REST transport keeps the package free of the gRPC PECL extension.
-        $clientOptions = ['transport' => 'rest'];
-
-        if (! empty($config['credentials'])) {
-            $clientOptions['credentials'] = $config['credentials'];
-        }
-
-        return new GoogleTranslator(
-            new TranslationServiceClient($clientOptions),
-            $projectId,
-            $config['location'] ?? 'global',
-        );
+        return new GoogleTranslator($this->container->make(HttpFactory::class), $key);
     }
 
     /**
