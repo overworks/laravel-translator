@@ -2,72 +2,72 @@
 
 declare(strict_types=1);
 
-use Google\Cloud\Translate\V3\TranslateTextRequest;
-use Google\Cloud\Translate\V3\TranslateTextResponse;
-use Google\Cloud\Translate\V3\Translation;
+use Illuminate\Http\Client\Factory;
 use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
- * The Google client is a final class, so instead of mocking it we subclass the
- * driver and stub the single protected API-call seam.
+ * Build an HTTP factory faked to return the given v2 translations payload.
+ *
+ * @param  array<int, array<string, string>>  $translations
  */
-function fakeGoogle(TranslateTextResponse $response, string $projectId = 'demo', string $location = 'global'): object
+function googleHttp(array $translations): Factory
 {
-    return new class($response, $projectId, $location) extends GoogleTranslator {
-        public ?TranslateTextRequest $captured = null;
-
-        public function __construct(
-            private TranslateTextResponse $stub,
-            string $projectId,
-            string $location,
-        ) {
-            $this->projectId = $projectId;
-            $this->location = $location;
-        }
-
-        protected function callApi(TranslateTextRequest $request): TranslateTextResponse
-        {
-            $this->captured = $request;
-
-            return $this->stub;
-        }
-    };
-}
-
-it('maps a single Google result and builds the right request', function () {
-    $response = (new TranslateTextResponse())->setTranslations([
-        new Translation(['translated_text' => '안녕하세요', 'detected_language_code' => 'en']),
+    $http = new Factory();
+    $http->fake([
+        '*' => Factory::response(['data' => ['translations' => $translations]]),
     ]);
 
-    $driver = fakeGoogle($response);
-    $result = $driver->translate('Hello', 'ko');
+    return $http;
+}
+
+it('maps a single v2 result and calls the API-key endpoint', function () {
+    $http = googleHttp([
+        ['translatedText' => '안녕하세요', 'detectedSourceLanguage' => 'en'],
+    ]);
+
+    $result = (new GoogleTranslator($http, 'test-key'))->translate('Hello', 'ko');
 
     expect($result)->toBeInstanceOf(TranslationResult::class)
         ->and($result->text)->toBe('안녕하세요')
         ->and($result->driver)->toBe('google')
         ->and($result->detectedSourceLang)->toBe('en');
 
-    $request = $driver->captured;
-    expect($request->getParent())->toBe('projects/demo/locations/global')
-        ->and($request->getTargetLanguageCode())->toBe('ko')
-        ->and(iterator_to_array($request->getContents()))->toBe(['Hello'])
-        ->and($request->getMimeType())->toBe('text/plain');
+    $http->assertSent(function ($request) {
+        return str_contains($request->url(), '/language/translate/v2')
+            && str_contains($request->url(), 'key=test-key')
+            && $request->data()['target'] === 'ko'
+            && $request->data()['q'] === ['Hello'];
+    });
 });
 
 it('translates a batch preserving keys and echoes explicit source language', function () {
-    $response = (new TranslateTextResponse())->setTranslations([
-        new Translation(['translated_text' => '안녕']),
-        new Translation(['translated_text' => '세계']),
+    $http = googleHttp([
+        ['translatedText' => '안녕'],
+        ['translatedText' => '세계'],
     ]);
 
-    $driver = fakeGoogle($response, 'demo', 'us-central1');
-    $results = $driver->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko', 'en');
+    $results = (new GoogleTranslator($http, 'k'))
+        ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko', 'en');
 
     expect($results)->toHaveKeys(['x', 'y'])
         ->and($results['x']->text)->toBe('안녕')
         ->and($results['y']->text)->toBe('세계')
-        ->and($results['x']->detectedSourceLang)->toBe('en')
-        ->and($driver->captured->getParent())->toBe('projects/demo/locations/us-central1')
-        ->and($driver->captured->getSourceLanguageCode())->toBe('en');
+        ->and($results['x']->detectedSourceLang)->toBe('en');
+});
+
+it('decodes HTML entities in plain-text results', function () {
+    $http = googleHttp([['translatedText' => 'It&#39;s a &quot;test&quot;']]);
+
+    expect((new GoogleTranslator($http, 'k'))->translate('x', 'en')->text)
+        ->toBe('It\'s a "test"');
+});
+
+it('returns an empty array for an empty batch without calling the API', function () {
+    $http = new Factory();
+    $http->fake();
+
+    expect((new GoogleTranslator($http, 'k'))->translateBatch([], 'ko'))->toBe([]);
+
+    $http->assertNothingSent();
 });
