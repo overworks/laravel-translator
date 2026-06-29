@@ -1,7 +1,9 @@
 # laravel-translator
 
-여러 번역 서비스(DeepL, Google Cloud Translation 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
+여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
 Laravel 표준 Manager/Driver 패턴으로 설계되어 드라이버를 쉽게 추가/교체할 수 있고, 번역 결과 캐싱을 기본 제공합니다.
+
+지원 드라이버: **DeepL**, **Google Cloud Translation**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등).
 
 ## 요구 사항
 
@@ -27,7 +29,7 @@ php artisan vendor:publish --tag=translator-config
 `config/translator.php` 또는 `.env`:
 
 ```dotenv
-TRANSLATOR_DRIVER=deepl          # 기본 드라이버: deepl | google
+TRANSLATOR_DRIVER=deepl          # 기본 드라이버: deepl | google | llm
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -37,11 +39,18 @@ GOOGLE_CLOUD_PROJECT=my-gcp-project
 GOOGLE_TRANSLATE_LOCATION=global
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
+# LLM (Prism)
+TRANSLATOR_LLM_PROVIDER=openai
+TRANSLATOR_LLM_MODEL=gpt-4o-mini
+
 # 캐싱
 TRANSLATOR_CACHE=true
 TRANSLATOR_CACHE_STORE=          # 비우면 기본 스토어 사용
 TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```
+
+> **LLM 드라이버**는 [Prism](https://prismphp.com)을 사용합니다. 프로바이더 API 키 등은 Prism 설정(`config/prism.php`)에서 관리합니다.
+> 배치 번역은 structured output으로 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
 
 ## 사용법
 
@@ -80,6 +89,12 @@ $results['farewell']->text; // "안녕히 가세요"
 
 ```php
 Translator::driver('google')->translate('Hello', 'ko');
+
+// LLM 드라이버 — 호출 단위로 옵션 전달 가능
+Translator::driver('llm')->translate('Hello', 'ko', 'en', [
+    'temperature'   => 0.0,
+    'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
+]);
 ```
 
 ### 의존성 주입
