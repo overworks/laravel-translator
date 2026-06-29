@@ -52,6 +52,22 @@ return [
             ],
         ],
 
+        // Additional named drivers. Each declares its type via the "driver"
+        // key and is referenced directly by its name (e.g. in the fallback
+        // chain or via Translator::driver('claude')). Use this to register
+        // several LLM providers — or multiple accounts of any driver.
+        'claude' => [
+            'driver'   => 'llm',
+            'provider' => 'anthropic',
+            'model'    => 'claude-3-5-sonnet-latest',
+        ],
+
+        'gemini' => [
+            'driver'   => 'llm',
+            'provider' => 'gemini',
+            'model'    => 'gemini-2.0-flash',
+        ],
+
         // Failover: try each driver in order, falling back to the next one
         // whenever a driver throws. Set 'default' => 'fallback' to use it.
         'fallback' => [

@@ -27,11 +27,13 @@ class LlmTranslator implements Translator
      * @param  string  $provider  Prism provider name (e.g. "openai", "anthropic").
      * @param  string  $model     Model identifier for that provider.
      * @param  array<string, mixed>  $options  Defaults: temperature, max_tokens, system_prompt.
+     * @param  string  $name      Driver name reported on results (e.g. "llm", "llm:anthropic").
      */
     public function __construct(
         protected string $provider,
         protected string $model,
         protected array $options = [],
+        protected string $name = 'llm',
     ) {
     }
 
@@ -52,7 +54,7 @@ class LlmTranslator implements Translator
         return new TranslationResult(
             text: trim($response->text),
             targetLang: $targetLang,
-            driver: 'llm',
+            driver: $this->name,
             detectedSourceLang: $sourceLang,
         );
     }
@@ -105,7 +107,7 @@ class LlmTranslator implements Translator
             fn (string $translation): TranslationResult => new TranslationResult(
                 text: trim($translation),
                 targetLang: $targetLang,
-                driver: 'llm',
+                driver: $this->name,
                 detectedSourceLang: $sourceLang,
             ),
             array_values($translations),
