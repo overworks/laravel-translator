@@ -61,10 +61,11 @@ it('throws when the llm provider or model is missing', function () {
         ->toThrow(InvalidArgumentException::class);
 });
 
-it('resolves the fallback driver without wrapping it in caching', function () {
+it('resolves the fallback driver lazily, without constructing children or caching it', function () {
     config()->set('translator.cache.enabled', true);
-    config()->set('translator.drivers.fallback.drivers', ['deepl', 'llm']);
-    config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => 'gpt-4o-mini']);
+    // 'google' has no credentials configured: if children were built eagerly,
+    // resolving the fallback driver would blow up here.
+    config()->set('translator.drivers.fallback.drivers', ['deepl', 'google']);
 
     expect(app(TranslatorManager::class)->driver('fallback'))->toBeInstanceOf(FallbackTranslator::class);
 });

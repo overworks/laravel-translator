@@ -95,18 +95,20 @@ class TranslatorManager extends Manager
             );
         }
 
-        $drivers = [];
+        $factories = [];
 
         foreach ($names as $name) {
             if ($name === 'fallback') {
                 throw new InvalidArgumentException('The fallback driver cannot reference itself.');
             }
 
-            // Each child is resolved through driver() so it gets its own caching.
-            $drivers[$name] = $this->driver($name);
+            // Resolve each child lazily through driver() (so it gets its own
+            // caching) only when it is actually reached. This prevents a child
+            // that cannot be constructed from breaking the whole chain.
+            $factories[$name] = fn (): Translator => $this->driver($name);
         }
 
-        return new FallbackTranslator($drivers, $this->container->make(LoggerInterface::class));
+        return new FallbackTranslator($factories, $this->container->make(LoggerInterface::class));
     }
 
     /**

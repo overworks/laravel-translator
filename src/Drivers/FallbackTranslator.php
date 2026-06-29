@@ -14,14 +14,25 @@ use Throwable;
 /**
  * Tries an ordered list of drivers, falling back to the next one whenever a
  * driver throws, so a single provider outage doesn't break translation.
+ *
+ * Drivers are passed as lazy factories and resolved only when reached, so a
+ * later driver that fails to even construct (e.g. missing credentials) never
+ * prevents an earlier, healthy driver from running.
  */
 class FallbackTranslator implements Translator
 {
     /**
-     * @param  array<string, Translator>  $drivers  Ordered, keyed by driver name.
+     * Successfully constructed drivers, memoized by name.
+     *
+     * @var array<string, Translator>
+     */
+    protected array $resolved = [];
+
+    /**
+     * @param  array<string, callable(): Translator>  $factories  Ordered, keyed by driver name.
      */
     public function __construct(
-        protected array $drivers,
+        protected array $factories,
         protected ?LoggerInterface $logger = null,
     ) {
     }
@@ -59,8 +70,12 @@ class FallbackTranslator implements Translator
     {
         $errors = [];
 
-        foreach ($this->drivers as $name => $driver) {
+        foreach ($this->factories as $name => $factory) {
             try {
+                // Construct lazily (memoizing successes); a driver that cannot
+                // even be built is treated like any other failure.
+                $driver = $this->resolved[$name] ??= $factory();
+
                 return $call($driver);
             } catch (Throwable $e) {
                 $errors[$name] = $e;

@@ -65,7 +65,7 @@ it('returns the first successful driver result', function () {
     $primary = succeedingDriver('deepl');
     $secondary = succeedingDriver('google');
 
-    $result = (new FallbackTranslator(['deepl' => $primary, 'google' => $secondary]))
+    $result = (new FallbackTranslator(['deepl' => fn () => $primary, 'google' => fn () => $secondary]))
         ->translate('hello', 'ko');
 
     expect($result->text)->toBe('HELLO')
@@ -78,7 +78,7 @@ it('falls back to the next driver when one fails', function () {
     $primary = failingDriver('deepl down');
     $secondary = succeedingDriver('google');
 
-    $result = (new FallbackTranslator(['deepl' => $primary, 'google' => $secondary]))
+    $result = (new FallbackTranslator(['deepl' => fn () => $primary, 'google' => fn () => $secondary]))
         ->translate('hello', 'ko');
 
     expect($result->driver)->toBe('google')
@@ -90,7 +90,7 @@ it('falls back for batch translations too', function () {
     $primary = failingDriver();
     $secondary = succeedingDriver('google');
 
-    $results = (new FallbackTranslator(['deepl' => $primary, 'google' => $secondary]))
+    $results = (new FallbackTranslator(['deepl' => fn () => $primary, 'google' => fn () => $secondary]))
         ->translateBatch(['a' => 'hello', 'b' => 'world'], 'ko');
 
     expect($results)->toHaveKeys(['a', 'b'])
@@ -98,10 +98,41 @@ it('falls back for batch translations too', function () {
         ->and($results['b']->driver)->toBe('google');
 });
 
+it('does not construct a later driver when an earlier one succeeds', function () {
+    $primary = succeedingDriver('deepl');
+    $secondConstructed = false;
+
+    $fallback = new FallbackTranslator([
+        'deepl' => fn () => $primary,
+        'google' => function () use (&$secondConstructed) {
+            $secondConstructed = true;
+            throw new RuntimeException('google credentials missing');
+        },
+    ]);
+
+    $result = $fallback->translate('hello', 'ko');
+
+    // The healthy earlier driver runs even though the later one cannot be built.
+    expect($result->driver)->toBe('deepl')
+        ->and($secondConstructed)->toBeFalse();
+});
+
+it('skips a driver that fails to construct and uses the next one', function () {
+    $secondary = succeedingDriver('google');
+
+    $result = (new FallbackTranslator([
+        'deepl' => fn () => throw new RuntimeException('deepl credentials missing'),
+        'google' => fn () => $secondary,
+    ]))->translate('hello', 'ko');
+
+    expect($result->driver)->toBe('google')
+        ->and($secondary->calls)->toBe(1);
+});
+
 it('throws an aggregate exception when every driver fails', function () {
     $fallback = new FallbackTranslator([
-        'deepl' => failingDriver('deepl down'),
-        'google' => failingDriver('google down'),
+        'deepl' => fn () => failingDriver('deepl down'),
+        'google' => fn () => failingDriver('google down'),
     ]);
 
     try {
