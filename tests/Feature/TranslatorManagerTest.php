@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
+use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
@@ -57,5 +58,20 @@ it('throws when the llm provider or model is missing', function () {
     config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => null]);
 
     expect(fn () => app(TranslatorManager::class)->driver('llm'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('resolves the fallback driver without wrapping it in caching', function () {
+    config()->set('translator.cache.enabled', true);
+    config()->set('translator.drivers.fallback.drivers', ['deepl', 'llm']);
+    config()->set('translator.drivers.llm', ['provider' => 'openai', 'model' => 'gpt-4o-mini']);
+
+    expect(app(TranslatorManager::class)->driver('fallback'))->toBeInstanceOf(FallbackTranslator::class);
+});
+
+it('throws when the fallback driver list is empty', function () {
+    config()->set('translator.drivers.fallback.drivers', []);
+
+    expect(fn () => app(TranslatorManager::class)->driver('fallback'))
         ->toThrow(InvalidArgumentException::class);
 });
