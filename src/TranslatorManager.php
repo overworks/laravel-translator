@@ -13,8 +13,10 @@ use InvalidArgumentException;
 use Minhyung\LaravelTranslator\Contracts\Translator;
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
+use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
 use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
+use Psr\Log\LoggerInterface;
 
 /**
  * Resolves translation drivers and (optionally) wraps them with caching.
@@ -83,6 +85,30 @@ class TranslatorManager extends Manager
         return new LlmTranslator($provider, $model, $config['options'] ?? []);
     }
 
+    protected function createFallbackDriver(): Translator
+    {
+        $names = $this->config()->get('translator.drivers.fallback.drivers', []);
+
+        if (! is_array($names) || $names === []) {
+            throw new InvalidArgumentException(
+                'The fallback driver requires a non-empty translator.drivers.fallback.drivers list.'
+            );
+        }
+
+        $drivers = [];
+
+        foreach ($names as $name) {
+            if ($name === 'fallback') {
+                throw new InvalidArgumentException('The fallback driver cannot reference itself.');
+            }
+
+            // Each child is resolved through driver() so it gets its own caching.
+            $drivers[$name] = $this->driver($name);
+        }
+
+        return new FallbackTranslator($drivers, $this->container->make(LoggerInterface::class));
+    }
+
     /**
      * Wrap every resolved driver with caching when enabled in config.
      */
@@ -93,6 +119,12 @@ class TranslatorManager extends Manager
 
     protected function wrapWithCache(string $driver, Translator $translator): Translator
     {
+        // The fallback driver's children are already cached individually;
+        // caching the composite again would mask provider recovery.
+        if ($translator instanceof FallbackTranslator) {
+            return $translator;
+        }
+
         $cache = $this->config()->get('translator.cache', []);
 
         if (empty($cache['enabled'])) {

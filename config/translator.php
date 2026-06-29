@@ -52,6 +52,12 @@ return [
             ],
         ],
 
+        // Failover: try each driver in order, falling back to the next one
+        // whenever a driver throws. Set 'default' => 'fallback' to use it.
+        'fallback' => [
+            'drivers' => ['deepl', 'google'],
+        ],
+
     ],
 
     /*
