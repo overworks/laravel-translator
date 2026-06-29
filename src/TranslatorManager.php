@@ -14,6 +14,7 @@ use Minhyung\LaravelTranslator\Contracts\Translator;
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
 use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
+use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 
 /**
  * Resolves translation drivers and (optionally) wraps them with caching.
@@ -64,6 +65,22 @@ class TranslatorManager extends Manager
             $projectId,
             $config['location'] ?? 'global',
         );
+    }
+
+    protected function createLlmDriver(): Translator
+    {
+        $config = $this->config()->get('translator.drivers.llm', []);
+
+        $provider = $config['provider'] ?? null;
+        $model = $config['model'] ?? null;
+
+        if (empty($provider) || empty($model)) {
+            throw new InvalidArgumentException(
+                'The LLM driver requires a provider and model. Set translator.drivers.llm.provider and .model.'
+            );
+        }
+
+        return new LlmTranslator($provider, $model, $config['options'] ?? []);
     }
 
     /**

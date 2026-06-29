@@ -38,6 +38,20 @@ return [
             'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
         ],
 
+        // LLM-backed translation via Prism. Configure the provider's own
+        // credentials in Prism's config (config/prism.php).
+        'llm' => [
+            'provider' => env('TRANSLATOR_LLM_PROVIDER', 'openai'),
+            'model'    => env('TRANSLATOR_LLM_MODEL', 'gpt-4o-mini'),
+
+            'options' => [
+                // 'temperature'     => 0.0,
+                // 'max_tokens'      => 1000,
+                // 'system_prompt'   => 'Custom prompt with {source} and {target} placeholders.',
+                // 'provider_options' => [],
+            ],
+        ],
+
     ],
 
     /*
