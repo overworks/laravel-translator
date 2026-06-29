@@ -18,10 +18,11 @@
     ],
     "require": {
         "php": "^8.3",
-        "illuminate/support": "^12.0|^13.0",
-        "illuminate/contracts": "^12.0|^13.0",
         "deeplcom/deepl-php": "^1.19",
-        "google/cloud-translate": "^2.3"
+        "google/cloud-translate": "^2.3",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
+        "prism-php/prism": "^0.100"
     },
     "require-dev": {
         "orchestra/testbench": "^10.0|^11.0",
