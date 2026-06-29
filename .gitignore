@@ -32,3 +32,6 @@ auth.json
 # PHPUnit
 /phpunit.xml
 /.phpunit.cache
+
+# Composer (library: do not track the lock file)
+/composer.lock
