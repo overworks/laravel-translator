@@ -3,14 +3,14 @@
 여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
 Laravel 표준 Manager/Driver 패턴으로 설계되어 드라이버를 쉽게 추가/교체할 수 있고, 번역 결과 캐싱을 기본 제공합니다.
 
-지원 드라이버: **DeepL**, **Google Cloud Translation**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등).
+지원 드라이버: **DeepL**, **Google Cloud Translation (v2)**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등).
 
 ## 요구 사항
 
 - PHP `^8.3`
 - Laravel 12 / 13 (`illuminate/support: ^12.0|^13.0`)
 
-> Google 드라이버는 REST 트랜스포트를 사용하므로 `ext-grpc` PECL 확장이 **필요 없습니다.**
+> Google 드라이버는 **Translation API v2**를 사용해 **API 키만으로** 동작합니다. 서비스 계정 자격증명이나 `ext-grpc` PECL 확장이 필요 없습니다.
 
 ## 설치
 
@@ -34,10 +34,8 @@ TRANSLATOR_DRIVER=deepl        # 기본 드라이버: deepl | google | openai | 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
 
-# Google Cloud Translation
-GOOGLE_CLOUD_PROJECT=my-gcp-project
-GOOGLE_TRANSLATE_LOCATION=global
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# Google Cloud Translation (v2, API key)
+GOOGLE_TRANSLATE_KEY=AIza...
 
 # LLM (Prism) — openai 모델 기본값
 TRANSLATOR_LLM_MODEL=gpt-4o-mini
