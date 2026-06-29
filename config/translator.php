@@ -4,29 +4,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Provider
+    | Default Driver
     |--------------------------------------------------------------------------
     |
-    | The provider used when none is explicitly specified. This is one of the
-    | keys defined in the "providers" array below (e.g. "deepl", "google").
+    | The driver used when none is explicitly specified. This is one of the
+    | keys defined in the "drivers" array below (e.g. "deepl", "google").
     |
     */
 
-    'default' => env('TRANSLATOR_PROVIDER', 'deepl'),
+    'default' => env('TRANSLATOR_DRIVER', 'deepl'),
 
     /*
     |--------------------------------------------------------------------------
-    | Providers
+    | Drivers
     |--------------------------------------------------------------------------
     |
-    | Each provider is keyed by name. The built-in names (deepl, google,
-    | fallback) have dedicated drivers; any other name is treated as a Prism
-    | LLM provider, where the key itself is the Prism provider name (override
-    | it with an optional "provider" key). Register as many as you like.
+    | Each driver is keyed by name. The built-in names (deepl, google,
+    | fallback) have dedicated implementations; any other name is treated as a
+    | Prism LLM driver, where the key itself is the Prism provider name
+    | (override it with an optional "provider" key). Register as many as you like.
     |
     */
 
-    'providers' => [
+    'drivers' => [
 
         'deepl' => [
             'key' => env('DEEPL_AUTH_KEY'),
@@ -41,8 +41,8 @@ return [
             'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
         ],
 
-        // LLM-backed translation via Prism. Any provider name that is not a
-        // built-in (deepl, google, fallback) is treated as a Prism provider,
+        // LLM-backed translation via Prism. Any driver name that is not a
+        // built-in (deepl, google, fallback) is treated as a Prism LLM driver,
         // so the key IS the Prism provider name. Configure the provider's own
         // credentials in Prism's config (config/prism.php). Each entry just
         // needs a "model" (and optional "options"); "provider" overrides the
@@ -66,10 +66,10 @@ return [
             'model' => 'gemini-2.0-flash',
         ],
 
-        // Failover: try each provider in order, falling back to the next one
-        // whenever a provider throws. Set 'default' => 'fallback' to use it.
+        // Failover: try each driver in order, falling back to the next one
+        // whenever a driver throws. Set 'default' => 'fallback' to use it.
         'fallback' => [
-            'providers' => ['deepl', 'google'],
+            'drivers' => ['deepl', 'google'],
         ],
 
     ],

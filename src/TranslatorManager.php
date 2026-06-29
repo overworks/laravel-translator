@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator;
 
-use BadMethodCallException;
 use DeepL\DeepLClient;
 use Google\Cloud\Translate\V3\Client\TranslationServiceClient;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
@@ -21,7 +20,7 @@ use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 use Psr\Log\LoggerInterface;
 
 /**
- * Resolves translation providers and (optionally) wraps them with caching.
+ * Resolves translation drivers and (optionally) wraps them with caching.
  *
  * @mixin \Minhyung\LaravelTranslator\Contracts\Translator
  */
@@ -32,45 +31,13 @@ class TranslatorManager extends Manager
         return $this->config()->get('translator.default', 'deepl');
     }
 
-    /**
-     * Resolve a translation provider by name (or the default when omitted).
-     */
-    public function provider(?string $name = null): Translator
-    {
-        // parent::driver() holds the resolution + memoization logic; the public
-        // driver() selector below is intentionally retired in favour of this.
-        return parent::driver($name);
-    }
-
-    /**
-     * @deprecated Use {@see provider()} to select a translation provider.
-     */
-    public function driver($driver = null)
-    {
-        throw new BadMethodCallException(
-            'TranslatorManager::driver() has been removed; use provider() to select a translation provider.'
-        );
-    }
-
-    /**
-     * Forward facade calls (translate, translateBatch, ...) to the default provider.
-     *
-     * @param  string  $method
-     * @param  array<int, mixed>  $parameters
-     * @return mixed
-     */
-    public function __call($method, $parameters)
-    {
-        return $this->provider()->$method(...$parameters);
-    }
-
     protected function createDeeplDriver(): Translator
     {
-        $key = $this->config()->get('translator.providers.deepl.key');
+        $key = $this->config()->get('translator.drivers.deepl.key');
 
         if (empty($key)) {
             throw new InvalidArgumentException(
-                'The DeepL provider requires an auth key. Set DEEPL_AUTH_KEY or translator.providers.deepl.key.'
+                'The DeepL driver requires an auth key. Set DEEPL_AUTH_KEY or translator.drivers.deepl.key.'
             );
         }
 
@@ -79,13 +46,13 @@ class TranslatorManager extends Manager
 
     protected function createGoogleDriver(): Translator
     {
-        $config = $this->config()->get('translator.providers.google', []);
+        $config = $this->config()->get('translator.drivers.google', []);
 
         $projectId = $config['project_id'] ?? null;
 
         if (empty($projectId)) {
             throw new InvalidArgumentException(
-                'The Google provider requires a project id. Set GOOGLE_CLOUD_PROJECT or translator.providers.google.project_id.'
+                'The Google driver requires a project id. Set GOOGLE_CLOUD_PROJECT or translator.drivers.google.project_id.'
             );
         }
 
@@ -104,19 +71,19 @@ class TranslatorManager extends Manager
     }
 
     /**
-     * Build an LLM provider (via Prism) whose name is the provider itself —
+     * Build an LLM-backed driver (via Prism) whose name is the Prism provider —
      * e.g. "openai", "anthropic", "gemini". The Prism provider defaults to the
      * name and may be overridden with a "provider" config key.
      */
-    protected function createLlmProvider(string $name): Translator
+    protected function buildLlmDriver(string $name): Translator
     {
-        $config = $this->config()->get("translator.providers.{$name}", []);
+        $config = $this->config()->get("translator.drivers.{$name}", []);
 
         $model = $config['model'] ?? null;
 
         if (! is_array($config) || empty($model)) {
             throw new InvalidArgumentException(
-                "The [{$name}] provider requires a model. Set translator.providers.{$name}.model."
+                "The [{$name}] driver requires a model. Set translator.drivers.{$name}.model."
             );
         }
 
@@ -130,11 +97,11 @@ class TranslatorManager extends Manager
 
     protected function createFallbackDriver(): Translator
     {
-        $names = $this->config()->get('translator.providers.fallback.providers', []);
+        $names = $this->config()->get('translator.drivers.fallback.drivers', []);
 
         if (! is_array($names) || $names === []) {
             throw new InvalidArgumentException(
-                'The fallback driver requires a non-empty translator.providers.fallback.providers list.'
+                'The fallback driver requires a non-empty translator.drivers.fallback.drivers list.'
             );
         }
 
@@ -145,27 +112,27 @@ class TranslatorManager extends Manager
                 throw new InvalidArgumentException('The fallback driver cannot reference itself.');
             }
 
-            // Resolve each child lazily through provider() (so it gets its own
+            // Resolve each child lazily through driver() (so it gets its own
             // caching) only when it is actually reached. This prevents a child
             // that cannot be constructed from breaking the whole chain.
-            $factories[$name] = fn (): Translator => $this->provider($name);
+            $factories[$name] = fn (): Translator => $this->driver($name);
         }
 
         return new FallbackTranslator($factories, $this->container->make(LoggerInterface::class));
     }
 
     /**
-     * Resolve a provider and wrap it with caching when enabled.
+     * Resolve a driver and wrap it with caching when enabled.
      */
     protected function createDriver($driver)
     {
         $driver = (string) $driver;
 
-        // Built-in providers (deepl, google, fallback) and custom extend()
-        // creators win first; any other name is treated as an LLM provider.
+        // Built-in drivers (deepl, google, fallback) and custom extend()
+        // creators win first; any other name is treated as an LLM driver.
         $resolved = isset($this->customCreators[$driver]) || method_exists($this, 'create' . Str::studly($driver) . 'Driver')
             ? parent::createDriver($driver)
-            : $this->createLlmProvider($driver);
+            : $this->buildLlmDriver($driver);
 
         return $this->wrapWithCache($driver, $resolved);
     }

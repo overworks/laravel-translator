@@ -29,7 +29,7 @@ php artisan vendor:publish --tag=translator-config
 `config/translator.php` 또는 `.env`:
 
 ```dotenv
-TRANSLATOR_PROVIDER=deepl        # 기본 프로바이더: deepl | google | openai | anthropic | ...
+TRANSLATOR_DRIVER=deepl        # 기본 드라이버: deepl | google | openai | anthropic | ...
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -54,12 +54,12 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ### LLM 프로바이더 (여러 개 등록)
 
 내장 프로바이더(`deepl`, `google`, `fallback`)가 아닌 이름은 모두 **Prism LLM 프로바이더**로 취급됩니다.
-즉 `providers` 배열의 **키가 곧 Prism 프로바이더 이름**이고, 각 항목은 `model`(+ 선택 `options`)만 있으면 됩니다.
+즉 `drivers` 배열의 **키가 곧 Prism 프로바이더 이름**이고, 각 항목은 `model`(+ 선택 `options`)만 있으면 됩니다.
 여러 LLM 프로바이더를 등록해 failover 체인에 넣을 때 유용합니다.
 
 ```php
 // config/translator.php
-'providers' => [
+'drivers' => [
     'openai'    => ['model' => 'gpt-4o-mini'],
     'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
     'gemini'    => ['model' => 'gemini-2.0-flash'],
@@ -70,7 +70,7 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```
 
 ```php
-Translator::provider('anthropic')->translate('Hello', 'ko'); // 결과의 ->driver 는 "anthropic"
+Translator::driver('anthropic')->translate('Hello', 'ko'); // 결과의 ->driver 는 "anthropic"
 ```
 
 ## 사용법
@@ -106,19 +106,17 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
-### 프로바이더 선택
+### 드라이버 선택
 
 ```php
-Translator::provider('google')->translate('Hello', 'ko');
+Translator::driver('google')->translate('Hello', 'ko');
 
-// LLM 프로바이더 — 호출 단위로 옵션 전달 가능
-Translator::provider('openai')->translate('Hello', 'ko', 'en', [
+// LLM 드라이버 — 호출 단위로 옵션 전달 가능
+Translator::driver('openai')->translate('Hello', 'ko', 'en', [
     'temperature'   => 0.0,
     'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
 ]);
 ```
-
-> 프로바이더 선택자는 `provider()`입니다. (`driver()`는 제거되었습니다.)
 
 ### 의존성 주입
 
@@ -145,13 +143,13 @@ public function __construct(private Translator $translator) {}
 // config/translator.php
 'default' => 'fallback',
 
-'providers' => [
+'drivers' => [
     // 여러 LLM 프로바이더를 자유롭게 조합
     'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
     'gemini'    => ['model' => 'gemini-2.0-flash'],
 
     'fallback' => [
-        'providers' => ['deepl', 'anthropic', 'gemini'],
+        'drivers' => ['deepl', 'anthropic', 'gemini'],
     ],
 ],
 ```
