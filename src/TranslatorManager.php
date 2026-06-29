@@ -31,19 +31,27 @@ class TranslatorManager extends Manager
         return $this->config()->get('translator.default', 'deepl');
     }
 
+    /**
+     * Resolve a translation provider by name (or the default when omitted).
+     */
+    public function provider(?string $name = null): Translator
+    {
+        return $this->driver($name);
+    }
+
     protected function createDeeplDriver(): Translator
     {
-        return $this->buildDeeplDriver($this->config()->get('translator.drivers.deepl', []));
+        return $this->buildDeeplDriver($this->config()->get('translator.providers.deepl', []));
     }
 
     protected function createGoogleDriver(): Translator
     {
-        return $this->buildGoogleDriver($this->config()->get('translator.drivers.google', []));
+        return $this->buildGoogleDriver($this->config()->get('translator.providers.google', []));
     }
 
     protected function createLlmDriver(): Translator
     {
-        return $this->buildLlmDriver($this->config()->get('translator.drivers.llm', []), 'llm');
+        return $this->buildLlmDriver($this->config()->get('translator.providers.llm', []), 'llm');
     }
 
     /**
@@ -55,7 +63,7 @@ class TranslatorManager extends Manager
 
         if (empty($key)) {
             throw new InvalidArgumentException(
-                'The DeepL driver requires an auth key. Set DEEPL_AUTH_KEY or translator.drivers.deepl.key.'
+                'The DeepL driver requires an auth key. Set DEEPL_AUTH_KEY or translator.providers.deepl.key.'
             );
         }
 
@@ -71,7 +79,7 @@ class TranslatorManager extends Manager
 
         if (empty($projectId)) {
             throw new InvalidArgumentException(
-                'The Google driver requires a project id. Set GOOGLE_CLOUD_PROJECT or translator.drivers.google.project_id.'
+                'The Google driver requires a project id. Set GOOGLE_CLOUD_PROJECT or translator.providers.google.project_id.'
             );
         }
 
@@ -99,7 +107,7 @@ class TranslatorManager extends Manager
 
         if (empty($provider) || empty($model)) {
             throw new InvalidArgumentException(
-                "The [{$name}] driver requires a provider and model (translator.drivers.{$name}.provider and .model)."
+                "The [{$name}] driver requires a provider and model (translator.providers.{$name}.provider and .model)."
             );
         }
 
@@ -108,11 +116,11 @@ class TranslatorManager extends Manager
 
     protected function createFallbackDriver(): Translator
     {
-        $names = $this->config()->get('translator.drivers.fallback.drivers', []);
+        $names = $this->config()->get('translator.providers.fallback.providers', []);
 
         if (! is_array($names) || $names === []) {
             throw new InvalidArgumentException(
-                'The fallback driver requires a non-empty translator.drivers.fallback.drivers list.'
+                'The fallback driver requires a non-empty translator.providers.fallback.providers list.'
             );
         }
 
@@ -123,10 +131,10 @@ class TranslatorManager extends Manager
                 throw new InvalidArgumentException('The fallback driver cannot reference itself.');
             }
 
-            // Resolve each child lazily through driver() (so it gets its own
+            // Resolve each child lazily through provider() (so it gets its own
             // caching) only when it is actually reached. This prevents a child
             // that cannot be constructed from breaking the whole chain.
-            $factories[$name] = fn (): Translator => $this->driver($name);
+            $factories[$name] = fn (): Translator => $this->provider($name);
         }
 
         return new FallbackTranslator($factories, $this->container->make(LoggerInterface::class));
@@ -140,11 +148,11 @@ class TranslatorManager extends Manager
      */
     protected function createConfiguredDriver(string $name): Translator
     {
-        $config = $this->config()->get("translator.drivers.{$name}");
+        $config = $this->config()->get("translator.providers.{$name}");
 
         if (! is_array($config) || empty($config['driver'])) {
             throw new InvalidArgumentException(
-                "Translation driver [{$name}] is not configured. Define translator.drivers.{$name} with a 'driver' key."
+                "Translation driver [{$name}] is not configured. Define translator.providers.{$name} with a 'driver' key."
             );
         }
 

@@ -4,26 +4,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Translation Driver
+    | Default Provider
     |--------------------------------------------------------------------------
     |
-    | The translation service used when no driver is explicitly specified.
-    | Supported out of the box: "deepl", "google".
+    | The provider used when none is explicitly specified. This is one of the
+    | keys defined in the "providers" array below (e.g. "deepl", "google").
     |
     */
 
-    'default' => env('TRANSLATOR_DRIVER', 'deepl'),
+    'default' => env('TRANSLATOR_PROVIDER', 'deepl'),
 
     /*
     |--------------------------------------------------------------------------
-    | Drivers
+    | Providers
     |--------------------------------------------------------------------------
     |
-    | Per-service credentials and options.
+    | Each provider is keyed by name. Built-in names (deepl, google, llm,
+    | fallback) are resolved by their own driver; any other named provider
+    | declares its type via a "driver" key — letting you register several
+    | LLM providers, or multiple accounts of any driver.
     |
     */
 
-    'drivers' => [
+    'providers' => [
 
         'deepl' => [
             'key' => env('DEEPL_AUTH_KEY'),
@@ -68,10 +71,10 @@ return [
             'model'    => 'gemini-2.0-flash',
         ],
 
-        // Failover: try each driver in order, falling back to the next one
-        // whenever a driver throws. Set 'default' => 'fallback' to use it.
+        // Failover: try each provider in order, falling back to the next one
+        // whenever a provider throws. Set 'default' => 'fallback' to use it.
         'fallback' => [
-            'drivers' => ['deepl', 'google'],
+            'providers' => ['deepl', 'google'],
         ],
 
     ],
