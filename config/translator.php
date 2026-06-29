@@ -19,10 +19,10 @@ return [
     | Providers
     |--------------------------------------------------------------------------
     |
-    | Each provider is keyed by name. Built-in names (deepl, google, llm,
-    | fallback) are resolved by their own driver; any other named provider
-    | declares its type via a "driver" key — letting you register several
-    | LLM providers, or multiple accounts of any driver.
+    | Each provider is keyed by name. The built-in names (deepl, google,
+    | fallback) have dedicated drivers; any other name is treated as a Prism
+    | LLM provider, where the key itself is the Prism provider name (override
+    | it with an optional "provider" key). Register as many as you like.
     |
     */
 
