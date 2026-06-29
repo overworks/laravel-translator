@@ -41,34 +41,29 @@ return [
             'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
         ],
 
-        // LLM-backed translation via Prism. Configure the provider's own
-        // credentials in Prism's config (config/prism.php).
-        'llm' => [
-            'provider' => env('TRANSLATOR_LLM_PROVIDER', 'openai'),
-            'model'    => env('TRANSLATOR_LLM_MODEL', 'gpt-4o-mini'),
+        // LLM-backed translation via Prism. Any provider name that is not a
+        // built-in (deepl, google, fallback) is treated as a Prism provider,
+        // so the key IS the Prism provider name. Configure the provider's own
+        // credentials in Prism's config (config/prism.php). Each entry just
+        // needs a "model" (and optional "options"); "provider" overrides the
+        // Prism provider if you want the key to be an alias.
+        'openai' => [
+            'model' => env('TRANSLATOR_LLM_MODEL', 'gpt-4o-mini'),
 
             'options' => [
-                // 'temperature'     => 0.0,
-                // 'max_tokens'      => 1000,
-                // 'system_prompt'   => 'Custom prompt with {source} and {target} placeholders.',
+                // 'temperature'      => 0.0,
+                // 'max_tokens'       => 1000,
+                // 'system_prompt'    => 'Custom prompt with {source} and {target} placeholders.',
                 // 'provider_options' => [],
             ],
         ],
 
-        // Additional named drivers. Each declares its type via the "driver"
-        // key and is referenced directly by its name (e.g. in the fallback
-        // chain or via Translator::driver('claude')). Use this to register
-        // several LLM providers — or multiple accounts of any driver.
-        'claude' => [
-            'driver'   => 'llm',
-            'provider' => 'anthropic',
-            'model'    => 'claude-3-5-sonnet-latest',
+        'anthropic' => [
+            'model' => 'claude-3-5-sonnet-latest',
         ],
 
         'gemini' => [
-            'driver'   => 'llm',
-            'provider' => 'gemini',
-            'model'    => 'gemini-2.0-flash',
+            'model' => 'gemini-2.0-flash',
         ],
 
         // Failover: try each provider in order, falling back to the next one

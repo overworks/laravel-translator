@@ -49,46 +49,52 @@ it('does not clobber Laravel\'s own translator binding', function () {
     expect(app('translator'))->toBeInstanceOf(\Illuminate\Translation\Translator::class);
 });
 
-it('resolves the llm driver from config', function () {
+it('resolves an LLM provider by its name and tags results with it', function () {
     config()->set('translator.cache.enabled', false);
-    config()->set('translator.providers.llm', ['provider' => 'openai', 'model' => 'gpt-4o-mini']);
-
-    expect(app(TranslatorManager::class)->provider('llm'))->toBeInstanceOf(LlmTranslator::class);
-});
-
-it('throws when the llm provider or model is missing', function () {
-    config()->set('translator.providers.llm', ['provider' => 'openai', 'model' => null]);
-
-    expect(fn () => app(TranslatorManager::class)->provider('llm'))
-        ->toThrow(InvalidArgumentException::class);
-});
-
-it('resolves a config-defined named LLM driver and tags results with its name', function () {
-    config()->set('translator.cache.enabled', false);
-    config()->set('translator.providers.claude', [
-        'driver'   => 'llm',
-        'provider' => 'anthropic',
-        'model'    => 'claude-3-5-sonnet-latest',
-    ]);
+    config()->set('translator.providers.anthropic', ['model' => 'claude-3-5-sonnet-latest']);
 
     Prism::fake([TextResponseFake::make()->withText('안녕')]);
 
-    $driver = app(TranslatorManager::class)->provider('claude');
+    $driver = app(TranslatorManager::class)->provider('anthropic');
 
     expect($driver)->toBeInstanceOf(LlmTranslator::class)
-        ->and($driver->translate('Hello', 'ko')->driver)->toBe('claude');
+        ->and($driver->translate('Hello', 'ko')->driver)->toBe('anthropic');
 });
 
-it('throws for a named driver that is not configured', function () {
+it('lets a provider key alias a different Prism provider', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.providers.claude', ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest']);
+
+    Prism::fake([TextResponseFake::make()->withText('안녕')]);
+
+    // Result is tagged with the key ("claude"), while Prism is told "anthropic".
+    expect(app(TranslatorManager::class)->provider('claude')->translate('Hello', 'ko')->driver)
+        ->toBe('claude');
+});
+
+it('throws when an LLM provider has no model (incl. unconfigured names)', function () {
+    config()->set('translator.providers.openai', ['model' => null]);
+
+    expect(fn () => app(TranslatorManager::class)->provider('openai'))
+        ->toThrow(InvalidArgumentException::class);
+
     expect(fn () => app(TranslatorManager::class)->provider('does-not-exist'))
         ->toThrow(InvalidArgumentException::class);
 });
 
-it('throws for a named driver config missing the driver type key', function () {
-    config()->set('translator.providers.broken', ['provider' => 'anthropic', 'model' => 'x']);
+it('retires the public driver() selector in favour of provider()', function () {
+    expect(fn () => app(TranslatorManager::class)->driver('deepl'))
+        ->toThrow(BadMethodCallException::class);
+});
 
-    expect(fn () => app(TranslatorManager::class)->provider('broken'))
-        ->toThrow(InvalidArgumentException::class);
+it('forwards facade calls to the default provider', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.default', 'anthropic');
+    config()->set('translator.providers.anthropic', ['model' => 'claude-3-5-sonnet-latest']);
+
+    Prism::fake([TextResponseFake::make()->withText('안녕하세요')]);
+
+    expect(Translator::translate('Hello', 'ko')->text)->toBe('안녕하세요');
 });
 
 it('resolves the fallback driver lazily, without constructing children or caching it', function () {
