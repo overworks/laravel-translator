@@ -35,3 +35,11 @@ auth.json
 
 # Composer (library: do not track the lock file)
 /composer.lock
+
+# AI
+/.agents
+/.claude
+/.codex
+/.ai
+.mcp.json
+boost.json
