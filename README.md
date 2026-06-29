@@ -113,6 +113,29 @@ public function __construct(private Translator $translator) {}
 동일한 입력(텍스트 · 소스/타깃 언어 · 옵션)은 Laravel 캐시에서 즉시 반환되어 API 호출과 비용을 줄입니다.
 배치 번역 시에는 **캐시 미스 항목만** 모아 한 번에 호출합니다.
 
+## Failover
+
+특정 프로바이더가 장애를 일으킬 때 다음 드라이버로 자동 전환하려면 `fallback` 드라이버를 사용합니다.
+나열한 순서대로 시도하고, 드라이버가 예외를 던지면 다음 드라이버로 넘어갑니다.
+
+```php
+// config/translator.php
+'default' => 'fallback',
+
+'drivers' => [
+    'fallback' => [
+        'drivers' => ['deepl', 'google', 'llm'],
+    ],
+],
+```
+
+```php
+Translator::translate('Hello', 'ko'); // deepl 실패 시 google → llm 순으로 시도
+```
+
+- 각 자식 드라이버는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
+- 모든 드라이버가 실패하면 `AllTranslationDriversFailedException`이 발생하고, `getErrors()`로 드라이버별 원인 예외를 얻을 수 있습니다.
+
 ## 드라이버 확장
 
 새 번역 서비스는 `Contracts\Translator`를 구현하고 매니저에 등록하면 됩니다.
