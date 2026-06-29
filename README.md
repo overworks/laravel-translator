@@ -52,6 +52,25 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 > **LLM 드라이버**는 [Prism](https://prismphp.com)을 사용합니다. 프로바이더 API 키 등은 Prism 설정(`config/prism.php`)에서 관리합니다.
 > 배치 번역은 structured output으로 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
 
+### 이름 있는 드라이버 (여러 프로바이더 등록)
+
+`drivers` 배열에 `driver` 타입을 지정한 항목을 추가하면, 그 이름을 그대로 드라이버로 쓸 수 있습니다.
+여러 LLM 프로바이더(또는 같은 드라이버의 여러 계정)를 등록해 failover 체인에 넣을 때 유용합니다.
+
+```php
+// config/translator.php
+'drivers' => [
+    'llm'    => ['provider' => 'openai', 'model' => 'gpt-4o-mini'],
+
+    'claude' => ['driver' => 'llm', 'provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'gemini' => ['driver' => 'llm', 'provider' => 'gemini',    'model' => 'gemini-2.0-flash'],
+],
+```
+
+```php
+Translator::driver('claude')->translate('Hello', 'ko'); // 결과의 ->driver 는 "claude"
+```
+
 ## 사용법
 
 ### 단건 번역
@@ -123,14 +142,18 @@ public function __construct(private Translator $translator) {}
 'default' => 'fallback',
 
 'drivers' => [
+    // 이름 있는 드라이버를 자유롭게 조합 (예: 여러 LLM 프로바이더)
+    'claude' => ['driver' => 'llm', 'provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'gemini' => ['driver' => 'llm', 'provider' => 'gemini',    'model' => 'gemini-2.0-flash'],
+
     'fallback' => [
-        'drivers' => ['deepl', 'google', 'llm'],
+        'drivers' => ['deepl', 'claude', 'gemini'],
     ],
 ],
 ```
 
 ```php
-Translator::translate('Hello', 'ko'); // deepl 실패 시 google → llm 순으로 시도
+Translator::translate('Hello', 'ko'); // deepl 실패 시 claude → gemini 순으로 시도
 ```
 
 - 각 자식 드라이버는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
