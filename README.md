@@ -29,7 +29,7 @@ php artisan vendor:publish --tag=translator-config
 `config/translator.php` 또는 `.env`:
 
 ```dotenv
-TRANSLATOR_PROVIDER=deepl        # 기본 프로바이더: deepl | google | llm
+TRANSLATOR_PROVIDER=deepl        # 기본 프로바이더: deepl | google | openai | anthropic | ...
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -39,8 +39,7 @@ GOOGLE_CLOUD_PROJECT=my-gcp-project
 GOOGLE_TRANSLATE_LOCATION=global
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
-# LLM (Prism)
-TRANSLATOR_LLM_PROVIDER=openai
+# LLM (Prism) — openai 모델 기본값
 TRANSLATOR_LLM_MODEL=gpt-4o-mini
 
 # 캐싱
@@ -49,26 +48,29 @@ TRANSLATOR_CACHE_STORE=          # 비우면 기본 스토어 사용
 TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```
 
-> **LLM 드라이버**는 [Prism](https://prismphp.com)을 사용합니다. 프로바이더 API 키 등은 Prism 설정(`config/prism.php`)에서 관리합니다.
+> **LLM 번역**은 [Prism](https://prismphp.com)을 사용합니다. 프로바이더 API 키 등은 Prism 설정(`config/prism.php`)에서 관리합니다.
 > 배치 번역은 structured output으로 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
 
-### 이름 있는 프로바이더 (여러 개 등록)
+### LLM 프로바이더 (여러 개 등록)
 
-`providers` 배열에 `driver` 타입을 지정한 항목을 추가하면, 그 이름을 그대로 프로바이더로 쓸 수 있습니다.
-여러 LLM 프로바이더(또는 같은 드라이버의 여러 계정)를 등록해 failover 체인에 넣을 때 유용합니다.
+내장 프로바이더(`deepl`, `google`, `fallback`)가 아닌 이름은 모두 **Prism LLM 프로바이더**로 취급됩니다.
+즉 `providers` 배열의 **키가 곧 Prism 프로바이더 이름**이고, 각 항목은 `model`(+ 선택 `options`)만 있으면 됩니다.
+여러 LLM 프로바이더를 등록해 failover 체인에 넣을 때 유용합니다.
 
 ```php
 // config/translator.php
 'providers' => [
-    'llm'    => ['provider' => 'openai', 'model' => 'gpt-4o-mini'],
+    'openai'    => ['model' => 'gpt-4o-mini'],
+    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
+    'gemini'    => ['model' => 'gemini-2.0-flash'],
 
-    'claude' => ['driver' => 'llm', 'provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
-    'gemini' => ['driver' => 'llm', 'provider' => 'gemini',    'model' => 'gemini-2.0-flash'],
+    // 키를 별칭으로 쓰고 싶으면 'provider'로 실제 Prism 프로바이더를 지정
+    'claude'    => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
 ],
 ```
 
 ```php
-Translator::provider('claude')->translate('Hello', 'ko'); // 결과의 ->driver 는 "claude"
+Translator::provider('anthropic')->translate('Hello', 'ko'); // 결과의 ->driver 는 "anthropic"
 ```
 
 ## 사용법
@@ -110,11 +112,13 @@ $results['farewell']->text; // "안녕히 가세요"
 Translator::provider('google')->translate('Hello', 'ko');
 
 // LLM 프로바이더 — 호출 단위로 옵션 전달 가능
-Translator::provider('llm')->translate('Hello', 'ko', 'en', [
+Translator::provider('openai')->translate('Hello', 'ko', 'en', [
     'temperature'   => 0.0,
     'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
 ]);
 ```
+
+> 프로바이더 선택자는 `provider()`입니다. (`driver()`는 제거되었습니다.)
 
 ### 의존성 주입
 
@@ -142,18 +146,18 @@ public function __construct(private Translator $translator) {}
 'default' => 'fallback',
 
 'providers' => [
-    // 이름 있는 프로바이더를 자유롭게 조합 (예: 여러 LLM 프로바이더)
-    'claude' => ['driver' => 'llm', 'provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
-    'gemini' => ['driver' => 'llm', 'provider' => 'gemini',    'model' => 'gemini-2.0-flash'],
+    // 여러 LLM 프로바이더를 자유롭게 조합
+    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
+    'gemini'    => ['model' => 'gemini-2.0-flash'],
 
     'fallback' => [
-        'providers' => ['deepl', 'claude', 'gemini'],
+        'providers' => ['deepl', 'anthropic', 'gemini'],
     ],
 ],
 ```
 
 ```php
-Translator::translate('Hello', 'ko'); // deepl 실패 시 claude → gemini 순으로 시도
+Translator::translate('Hello', 'ko'); // deepl 실패 시 anthropic → gemini 순으로 시도
 ```
 
 - 각 자식 드라이버는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
