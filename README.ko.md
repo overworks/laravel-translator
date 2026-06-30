@@ -49,13 +49,13 @@ GOOGLE_TRANSLATE_KEY=AIza...
 
 # Claude (네이티브)
 ANTHROPIC_API_KEY=sk-ant-...
-TRANSLATOR_CLAUDE_MODEL=claude-3-5-sonnet-latest
+TRANSLATOR_CLAUDE_MODEL=claude-haiku-4-5
 
 # OpenAI + 호환 프로바이더 — API 키 + 선택 모델 지정
 OPENAI_API_KEY=sk-...
-TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+TRANSLATOR_OPENAI_MODEL=gpt-5.4-mini
 GEMINI_API_KEY=AIza...
-TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
+TRANSLATOR_GEMINI_MODEL=gemini-2.5-flash
 DEEPSEEK_API_KEY=sk-...
 
 # 캐싱
@@ -76,15 +76,15 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 'translators' => [
     'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
     'google' => ['driver' => 'google', 'key' => env('GOOGLE_TRANSLATE_KEY')],
-    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
-    'openai' => ['driver' => 'openai', 'key' => env('OPENAI_API_KEY'), 'model' => 'gpt-4o-mini'],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-haiku-4-5'],
+    'openai' => ['driver' => 'openai', 'key' => env('OPENAI_API_KEY'), 'model' => 'gpt-5.4-mini'],
 
     // OpenAI 호환 엔드포인트: 같은 driver, 다른 base_url
     'gemini' => [
         'driver'   => 'openai',
         'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
         'key'      => env('GEMINI_API_KEY'),
-        'model'    => 'gemini-2.0-flash',
+        'model'    => 'gemini-2.5-flash',
     ],
     'deepseek' => [
         'driver'   => 'openai',
@@ -176,7 +176,7 @@ public function __construct(private Translator $translator) {}
 
 'translators' => [
     'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
-    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-haiku-4-5'],
 
     'safe' => [
         'driver'      => 'fallback',

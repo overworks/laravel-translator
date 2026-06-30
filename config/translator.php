@@ -46,7 +46,7 @@ return [
         'claude' => [
             'driver' => 'claude',
             'key' => env('ANTHROPIC_API_KEY'),
-            'model' => env('TRANSLATOR_CLAUDE_MODEL', 'claude-3-5-sonnet-latest'),
+            'model' => env('TRANSLATOR_CLAUDE_MODEL', 'claude-haiku-4-5'),
 
             'options' => [
                 // 'temperature'   => 0.0,
@@ -59,7 +59,7 @@ return [
         'openai' => [
             'driver' => 'openai',
             'key' => env('OPENAI_API_KEY'),
-            'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-4o-mini'),
+            'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-5.4-mini'),
         ],
 
         // Any OpenAI-compatible endpoint reuses the "openai" driver with its own
@@ -75,7 +75,7 @@ return [
             'driver' => 'openai',
             'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
             'key' => env('GEMINI_API_KEY'),
-            'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.0-flash'),
+            'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.5-flash'),
         ],
 
         'deepseek' => [

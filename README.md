@@ -54,13 +54,13 @@ GOOGLE_TRANSLATE_KEY=AIza...
 
 # Claude (native)
 ANTHROPIC_API_KEY=sk-ant-...
-TRANSLATOR_CLAUDE_MODEL=claude-3-5-sonnet-latest
+TRANSLATOR_CLAUDE_MODEL=claude-haiku-4-5
 
 # OpenAI + compatible providers — API key + optional model override
 OPENAI_API_KEY=sk-...
-TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+TRANSLATOR_OPENAI_MODEL=gpt-5.4-mini
 GEMINI_API_KEY=AIza...
-TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
+TRANSLATOR_GEMINI_MODEL=gemini-2.5-flash
 DEEPSEEK_API_KEY=sk-...
 
 # Caching
@@ -81,15 +81,15 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
 'translators' => [
     'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
     'google' => ['driver' => 'google', 'key' => env('GOOGLE_TRANSLATE_KEY')],
-    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
-    'openai' => ['driver' => 'openai', 'key' => env('OPENAI_API_KEY'), 'model' => 'gpt-4o-mini'],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-haiku-4-5'],
+    'openai' => ['driver' => 'openai', 'key' => env('OPENAI_API_KEY'), 'model' => 'gpt-5.4-mini'],
 
     // OpenAI-compatible endpoints: same driver, different base_url
     'gemini' => [
         'driver'   => 'openai',
         'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
         'key'      => env('GEMINI_API_KEY'),
-        'model'    => 'gemini-2.0-flash',
+        'model'    => 'gemini-2.5-flash',
     ],
     'deepseek' => [
         'driver'   => 'openai',
@@ -181,7 +181,7 @@ It tries each listed translator in order and moves on to the next whenever one t
 
 'translators' => [
     'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
-    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-haiku-4-5'],
 
     'safe' => [
         'driver'      => 'fallback',
