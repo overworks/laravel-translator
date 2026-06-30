@@ -75,6 +75,19 @@ return [
             'model' => env('TRANSLATOR_OLLAMA_MODEL', 'llama3.2'),
         ],
 
+        // Custom OpenAI-compatible endpoint (self-hosted gateways, proxies, or
+        // vendors exposing the OpenAI chat schema). Any driver entry with a
+        // "base_uri" talks to that endpoint directly via openai-php/client,
+        // bypassing Prism. Register as many as you like under different keys.
+        'custom' => [
+            'base_uri' => env('TRANSLATOR_CUSTOM_BASE_URI'), // e.g. https://my-gateway.test/v1
+            'key' => env('TRANSLATOR_CUSTOM_KEY'),
+            'model' => env('TRANSLATOR_CUSTOM_MODEL', 'gpt-4o-mini'),
+
+            // 'headers' => ['X-Tenant' => 'acme'],
+            // 'options' => ['temperature' => 0.0],
+        ],
+
         // Failover: try each driver in order, falling back to the next one
         // whenever a driver throws. Set 'default' => 'fallback' to use it.
         'fallback' => [

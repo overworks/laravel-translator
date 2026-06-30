@@ -10,7 +10,7 @@
 A Laravel package that puts multiple translation services (DeepL, Google Cloud Translation, LLMs, ...) behind **one unified API**.
 It is built on Laravel's standard Manager/Driver pattern, so drivers are easy to add or swap, and it ships with translation-result caching out of the box.
 
-Supported drivers: **DeepL**, **Google Cloud Translation (v2)**, and **LLM** (powered by [Prism](https://prismphp.com) — OpenAI/Anthropic/Gemini, etc.).
+Supported drivers: **DeepL**, **Google Cloud Translation (v2)**, **LLM** (powered by [Prism](https://prismphp.com) — OpenAI/Anthropic/Gemini, etc.), and any **custom OpenAI-compatible endpoint** (via [openai-php/client](https://github.com/openai-php/client)).
 
 ## Requirements
 
@@ -84,6 +84,29 @@ This is handy for registering several LLM providers and dropping them into a fai
 
 ```php
 Translator::driver('anthropic')->translate('Hello', 'ko'); // result's ->driver is "anthropic"
+```
+
+### Custom OpenAI-compatible endpoints
+
+For endpoints that Prism does not ship as a first-class provider — self-hosted gateways, proxies, or vendors that expose the OpenAI chat schema — give the driver entry a **`base_uri`**.
+Such entries talk to the endpoint directly through [openai-php/client](https://github.com/openai-php/client), bypassing Prism. Register as many as you like under different keys.
+
+```php
+// config/translator.php
+'drivers' => [
+    'custom' => [
+        'base_uri' => 'https://my-gateway.test/v1',
+        'key'      => env('TRANSLATOR_CUSTOM_KEY'),
+        'model'    => 'my-model',
+
+        // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
+        // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
+    ],
+],
+```
+
+```php
+Translator::driver('custom')->translate('Hello', 'ko'); // result's ->driver is "custom"
 ```
 
 ## Usage

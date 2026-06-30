@@ -6,6 +6,7 @@ use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
 use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
+use Minhyung\LaravelTranslator\Drivers\OpenAiCompatibleTranslator;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
 use Prism\Prism\Facades\Prism;
@@ -80,6 +81,18 @@ it('throws when an LLM provider has no model (incl. unconfigured names)', functi
 
     expect(fn () => app(TranslatorManager::class)->driver('does-not-exist'))
         ->toThrow(InvalidArgumentException::class);
+});
+
+it('routes a driver entry with a base_uri to the OpenAI-compatible driver', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.drivers.custom', [
+        'base_uri' => 'https://gateway.test/v1',
+        'key' => 'secret',
+        'model' => 'local-model',
+    ]);
+
+    expect(app(TranslatorManager::class)->driver('custom'))
+        ->toBeInstanceOf(OpenAiCompatibleTranslator::class);
 });
 
 it('forwards facade calls to the default driver', function () {

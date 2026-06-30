@@ -5,7 +5,7 @@
 여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
 Laravel 표준 Manager/Driver 패턴으로 설계되어 드라이버를 쉽게 추가/교체할 수 있고, 번역 결과 캐싱을 기본 제공합니다.
 
-지원 드라이버: **DeepL**, **Google Cloud Translation (v2)**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등).
+지원 드라이버: **DeepL**, **Google Cloud Translation (v2)**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등), 그리고 임의의 **OpenAI 호환 엔드포인트** ([openai-php/client](https://github.com/openai-php/client) 기반).
 
 ## 요구 사항
 
@@ -79,6 +79,29 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 
 ```php
 Translator::driver('anthropic')->translate('Hello', 'ko'); // 결과의 ->driver 는 "anthropic"
+```
+
+### 커스텀 OpenAI 호환 엔드포인트
+
+Prism이 1st-party로 지원하지 않는 엔드포인트(사내 게이트웨이, 프록시, OpenAI chat 스키마를 노출하는 벤더 등)는 드라이버 항목에 **`base_uri`**를 넣으면 됩니다.
+이런 항목은 Prism을 거치지 않고 [openai-php/client](https://github.com/openai-php/client)로 엔드포인트에 직접 요청합니다. 서로 다른 키로 여러 개 등록할 수 있습니다.
+
+```php
+// config/translator.php
+'drivers' => [
+    'custom' => [
+        'base_uri' => 'https://my-gateway.test/v1',
+        'key'      => env('TRANSLATOR_CUSTOM_KEY'),
+        'model'    => 'my-model',
+
+        // 'headers' => ['X-Tenant' => 'acme'], // 추가 HTTP 헤더
+        // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
+    ],
+],
+```
+
+```php
+Translator::driver('custom')->translate('Hello', 'ko'); // 결과의 ->driver 는 "custom"
 ```
 
 ## 사용법

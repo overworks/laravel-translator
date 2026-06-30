@@ -17,6 +17,8 @@ use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
 use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
 use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
+use Minhyung\LaravelTranslator\Drivers\OpenAiCompatibleTranslator;
+use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -82,6 +84,39 @@ class TranslatorManager extends Manager
         );
     }
 
+    /**
+     * Build a driver that talks to an arbitrary OpenAI-compatible chat
+     * completions endpoint directly (no Prism). A drivers entry opts in by
+     * setting a "base_uri"; "key" and optional "headers" configure the client.
+     */
+    protected function buildOpenAiCompatibleDriver(string $name): Translator
+    {
+        $config = $this->config()->get("translator.drivers.{$name}", []);
+
+        $model = $config['model'] ?? null;
+
+        if (empty($model)) {
+            throw new InvalidArgumentException(
+                "The [{$name}] driver requires a model. Set translator.drivers.{$name}.model."
+            );
+        }
+
+        $factory = (new OpenAiFactory())
+            ->withBaseUri($config['base_uri'])
+            ->withApiKey((string) ($config['key'] ?? ''));
+
+        foreach ($config['headers'] ?? [] as $header => $value) {
+            $factory->withHttpHeader($header, $value);
+        }
+
+        return new OpenAiCompatibleTranslator(
+            $factory->make(),
+            $model,
+            $config['options'] ?? [],
+            $name,
+        );
+    }
+
     protected function createFallbackDriver(): Translator
     {
         $names = $this->config()->get('translator.drivers.fallback.drivers', []);
@@ -116,10 +151,14 @@ class TranslatorManager extends Manager
         $driver = (string) $driver;
 
         // Built-in drivers (deepl, google, fallback) and custom extend()
-        // creators win first; any other name is treated as an LLM driver.
-        $resolved = isset($this->customCreators[$driver]) || method_exists($this, 'create' . Str::studly($driver) . 'Driver')
-            ? parent::createDriver($driver)
-            : $this->buildLlmDriver($driver);
+        // creators win first; an entry with a "base_uri" is a direct
+        // OpenAI-compatible endpoint; any other name is a Prism LLM driver.
+        $resolved = match (true) {
+            isset($this->customCreators[$driver]),
+            method_exists($this, 'create' . Str::studly($driver) . 'Driver') => parent::createDriver($driver),
+            $this->config()->get("translator.drivers.{$driver}.base_uri") !== null => $this->buildOpenAiCompatibleDriver($driver),
+            default => $this->buildLlmDriver($driver),
+        };
 
         return $this->wrapWithCache($driver, $resolved);
     }
