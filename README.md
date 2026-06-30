@@ -44,8 +44,10 @@ DEEPL_AUTH_KEY=xxxxxxxx:fx
 # Google Cloud Translation (v2, API key)
 GOOGLE_TRANSLATE_KEY=AIza...
 
-# LLM (Prism) — default model for openai
-TRANSLATOR_LLM_MODEL=gpt-4o-mini
+# LLM (Prism) — per-provider model overrides
+TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
 
 # Caching
 TRANSLATOR_CACHE=true

@@ -44,7 +44,7 @@ return [
         // needs a "model" (and optional "options"); "provider" overrides the
         // Prism provider if you want the key to be an alias.
         'openai' => [
-            'model' => env('TRANSLATOR_LLM_MODEL', 'gpt-4o-mini'),
+            'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-4o-mini'),
 
             'options' => [
                 // 'temperature'      => 0.0,
@@ -55,11 +55,11 @@ return [
         ],
 
         'anthropic' => [
-            'model' => 'claude-3-5-sonnet-latest',
+            'model' => env('TRANSLATOR_ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
         ],
 
         'gemini' => [
-            'model' => 'gemini-2.0-flash',
+            'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.0-flash'),
         ],
 
         // Failover: try each driver in order, falling back to the next one
