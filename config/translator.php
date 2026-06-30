@@ -75,7 +75,7 @@ return [
             'driver' => 'openai',
             'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
             'key' => env('GEMINI_API_KEY'),
-            'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.5-flash'),
+            'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-3-flash-preview'),
         ],
 
         'deepseek' => [

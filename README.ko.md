@@ -55,7 +55,7 @@ TRANSLATOR_CLAUDE_MODEL=claude-haiku-4-5
 OPENAI_API_KEY=sk-...
 TRANSLATOR_OPENAI_MODEL=gpt-5.4-mini
 GEMINI_API_KEY=AIza...
-TRANSLATOR_GEMINI_MODEL=gemini-2.5-flash
+TRANSLATOR_GEMINI_MODEL=gemini-3-flash-preview
 DEEPSEEK_API_KEY=sk-...
 
 # 캐싱
@@ -84,7 +84,7 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
         'driver'   => 'openai',
         'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
         'key'      => env('GEMINI_API_KEY'),
-        'model'    => 'gemini-2.5-flash',
+        'model'    => 'gemini-3-flash-preview',
     ],
     'deepseek' => [
         'driver'   => 'openai',
