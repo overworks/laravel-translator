@@ -164,6 +164,23 @@ use Minhyung\LaravelTranslator\Contracts\Translator;
 public function __construct(private Translator $translator) {}
 ```
 
+## 커맨드라인
+
+터미널에서 바로 번역할 수 있습니다:
+
+```bash
+php artisan translator:translate "Hello, world!" ko
+# 안녕하세요, 세상!
+
+# translator와 소스 언어 지정
+php artisan translator:translate "Hello" ko --via=claude --from=en
+
+# 전체 결과(번역문, 감지된 소스 언어, translator 등)를 JSON으로
+php artisan translator:translate "Hello" ko --json
+```
+
+옵션: `--from`(소스 언어, 생략 시 자동 감지), `--via`(translator 이름, 생략 시 기본값), `--json`(전체 결과를 JSON으로 출력).
+
 ## 캐싱
 
 `translator.cache.enabled`가 켜져 있으면 모든 driver가 `CachingDriver`로 감싸집니다.

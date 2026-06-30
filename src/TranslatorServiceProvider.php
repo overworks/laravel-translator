@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator;
 
-use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
+use Minhyung\LaravelTranslator\Console\TranslateCommand;
 use Minhyung\LaravelTranslator\Contracts\Translator;
 
-class TranslatorServiceProvider extends ServiceProvider implements DeferrableProvider
+class TranslatorServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
@@ -28,14 +28,8 @@ class TranslatorServiceProvider extends ServiceProvider implements DeferrablePro
             $this->publishes([
                 __DIR__ . '/../config/translator.php' => $this->app->configPath('translator.php'),
             ], 'translator-config');
-        }
-    }
 
-    /**
-     * @return array<int, string>
-     */
-    public function provides(): array
-    {
-        return [TranslatorManager::class, Translator::class];
+            $this->commands([TranslateCommand::class]);
+        }
     }
 }

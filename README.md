@@ -169,6 +169,23 @@ use Minhyung\LaravelTranslator\Contracts\Translator;
 public function __construct(private Translator $translator) {}
 ```
 
+## Command line
+
+Translate a string straight from the terminal:
+
+```bash
+php artisan translator:translate "Hello, world!" ko
+# 안녕하세요, 세상!
+
+# pick a translator and source language
+php artisan translator:translate "Hello" ko --via=claude --from=en
+
+# full result (text, detected source, translator, ...) as JSON
+php artisan translator:translate "Hello" ko --json
+```
+
+Options: `--from` (source language, auto-detected when omitted), `--via` (translator name, the default when omitted), `--json` (output the full result as JSON).
+
 ## Caching
 
 When `translator.cache.enabled` is on, every driver is wrapped in a `CachingDriver`.
