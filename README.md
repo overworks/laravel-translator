@@ -8,7 +8,7 @@
 **English** | [한국어](README.ko.md)
 
 A Laravel package that puts multiple translation services (DeepL, Google Cloud Translation, LLMs, ...) behind **one unified API**.
-It follows the same shape as Laravel's `config/filesystems.php`: you define named **translators**, and each one picks an implementation with a **`driver`** key. Translators are selected with `Translator::via('name')`, just like `Storage::disk('name')`. Result caching is built in.
+You define named **translators** in config, each picking an implementation with a **`driver`** key, and select one with `Translator::via('name')`. Result caching is built in.
 
 Built-in drivers:
 

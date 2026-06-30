@@ -3,7 +3,7 @@
 [English](README.md) | **한국어**
 
 여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
-`config/filesystems.php`와 동일한 형태입니다: 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driver`** 키로 구현을 고릅니다. `Storage::disk('name')`처럼 `Translator::via('name')`으로 선택합니다. 번역 결과 캐싱을 기본 제공합니다.
+config에 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driver`** 키로 구현을 고릅니다. `Translator::via('name')`으로 선택하며, 번역 결과 캐싱을 기본 제공합니다.
 
 내장 드라이버:
 
