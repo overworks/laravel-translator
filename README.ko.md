@@ -221,6 +221,16 @@ php artisan translator:translate "Hello" ko --json
 
 옵션: `--from`(소스 언어, 생략 시 자동 감지), `--via`(translator 이름, 생략 시 기본값), `--json`(전체 결과를 JSON으로 출력).
 
+**언어파일**(PHP 그룹 + JSON)을 다른 로케일로 번역합니다 — 배열 구조, `:placeholder` 토큰, 복수형(`apple|apples`, `{1} :count …`)을 보존합니다. 기본은 누락된 키만 채우므로 다시 실행해도 안전합니다:
+
+```bash
+php artisan translator:lang ko ja            # en → ko, ja
+php artisan translator:lang de --via=deepl   # 특정 translator 사용
+php artisan translator:lang ko --overwrite   # 기존 키도 다시 번역
+```
+
+옵션: `--source`(소스 로케일, 기본 `en`), `--via`(translator), `--overwrite`(이미 있는 키도 재번역).
+
 설정이 올바른지 점검합니다 — 각 translator를 빌드·검증해(키/모델 누락, 알 수 없는 `fallback` 자식, 정의되지 않은 기본값 등) 표로 보고합니다:
 
 ```bash

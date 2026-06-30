@@ -7,6 +7,7 @@ namespace Minhyung\LaravelTranslator;
 use Illuminate\Support\ServiceProvider;
 use Minhyung\LaravelTranslator\Console\DoctorCommand;
 use Minhyung\LaravelTranslator\Console\TranslateCommand;
+use Minhyung\LaravelTranslator\Console\TranslateLangCommand;
 use Minhyung\LaravelTranslator\Contracts\Translator;
 
 class TranslatorServiceProvider extends ServiceProvider
@@ -30,7 +31,7 @@ class TranslatorServiceProvider extends ServiceProvider
                 __DIR__ . '/../config/translator.php' => $this->app->configPath('translator.php'),
             ], 'translator-config');
 
-            $this->commands([TranslateCommand::class, DoctorCommand::class]);
+            $this->commands([TranslateCommand::class, TranslateLangCommand::class, DoctorCommand::class]);
         }
     }
 }

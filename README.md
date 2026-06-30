@@ -226,6 +226,16 @@ php artisan translator:translate "Hello" ko --json
 
 Options: `--from` (source language, auto-detected when omitted), `--via` (translator name, the default when omitted), `--json` (output the full result as JSON).
 
+Translate your **localization files** (PHP groups and the JSON file) into other locales, preserving array structure, `:placeholder` tokens, and pluralization (`apple|apples`, `{1} :count …`). By default only missing keys are filled, so it's safe to re-run:
+
+```bash
+php artisan translator:lang ko ja            # en → ko and ja
+php artisan translator:lang de --via=deepl   # use a specific translator
+php artisan translator:lang ko --overwrite   # re-translate existing keys too
+```
+
+Options: `--source` (source locale, default `en`), `--via` (translator), `--overwrite` (re-translate keys that already exist).
+
 Check that your configuration is sound — each translator is built and validated (missing keys/models, unknown `fallback` children, an undefined default, ...) and reported in a table:
 
 ```bash
