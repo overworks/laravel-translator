@@ -24,6 +24,11 @@ function bracketTranslator(): TranslatorContract
             return array_map(fn (string $t) => new TranslationResult('[' . $t . ']', $targetLang, 'wrap'), $texts);
         }
 
+        public function translateInto(array $targetLangs, string $text, ?string $sourceLang = null, array $options = []): array
+        {
+            return [];
+        }
+
         public function detect(string $text): LanguageDetection
         {
             return new LanguageDetection('en', 'wrap');

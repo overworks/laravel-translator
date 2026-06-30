@@ -170,6 +170,15 @@ $results['farewell']->text; // "안녕히 가세요"
 
 > For LLM drivers (`claude`, `openai`), batch translation requests a single JSON object with one in-order result per input and throws if the counts don't match. `deepl` and `google` translate batches natively.
 
+### Into several languages at once
+
+```php
+$results = Translator::translateInto(['ko', 'ja', 'es'], 'Hello'); // keyed by target
+
+$results['ko']->text; // "안녕하세요"
+$results['ja']->text; // "こんにちは"
+```
+
 ### Selecting a translator
 
 ```php

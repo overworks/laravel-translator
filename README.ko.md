@@ -165,6 +165,15 @@ $results['farewell']->text; // "안녕히 가세요"
 
 > LLM 드라이버(`claude`, `openai`)는 배치 번역 시 입력당 하나의 결과를 순서대로 담은 JSON 객체를 모델에 요청하며, 개수가 맞지 않으면 예외를 던집니다. `deepl`·`google`은 배치를 네이티브로 처리합니다.
 
+### 여러 언어로 한 번에
+
+```php
+$results = Translator::translateInto(['ko', 'ja', 'es'], 'Hello'); // 타깃별 키
+
+$results['ko']->text; // "안녕하세요"
+$results['ja']->text; // "こんにちは"
+```
+
 ### translator 선택
 
 ```php

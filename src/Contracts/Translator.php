@@ -48,6 +48,20 @@ interface Translator
     ): array;
 
     /**
+     * Translate one text into several target languages at once.
+     *
+     * @param  array<int, string>  $targetLangs
+     * @param  array<string, mixed>  $options
+     * @return array<string, TranslationResult>  Keyed by target language code.
+     */
+    public function translateInto(
+        array $targetLangs,
+        string $text,
+        ?string $sourceLang = null,
+        array $options = []
+    ): array;
+
+    /**
      * Detect the language of $text.
      *
      * @throws RuntimeException  When the underlying driver cannot detect languages.

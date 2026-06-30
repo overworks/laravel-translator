@@ -14,6 +14,7 @@ use Minhyung\LaravelTranslator\TranslatorManager;
  * @method static \Minhyung\LaravelTranslator\Translator build(array $config, string|null $name = null)
  * @method static TranslationResult translate(string $text, string $targetLang, string|null $sourceLang = null, array $options = [])
  * @method static array<array-key, TranslationResult> translateBatch(array $texts, string $targetLang, string|null $sourceLang = null, array $options = [])
+ * @method static array<string, TranslationResult> translateInto(array $targetLangs, string $text, string|null $sourceLang = null, array $options = [])
  * @method static \Minhyung\LaravelTranslator\Support\LanguageDetection detect(string $text)
  * @method static array<int, \Minhyung\LaravelTranslator\Support\Language> languages()
  *
