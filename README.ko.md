@@ -11,6 +11,7 @@ config에 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driv
 - **`google`** — Google Cloud Translation (기본 v2, `version`으로 v3/Advanced)
 - **`claude`** — 네이티브 Anthropic Messages API ([mozex/anthropic-php](https://github.com/mozex/anthropic-php) 기반)
 - **`openai`** — OpenAI 및 모든 OpenAI 호환 엔드포인트(DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, 사내 게이트웨이)를 `base_url`로 지정 ([openai-php/client](https://github.com/openai-php/client) 기반)
+- **`libretranslate`** — [LibreTranslate](https://libretranslate.com) (무료·오픈소스, 셀프호스트 또는 호스팅)
 - **`fallback`** — 여러 translator를 순서대로 시도
 
 무거운 LLM 추상화 레이어 없이, 각 드라이버가 프로바이더 SDK/API에 직접 요청합니다.
@@ -102,6 +103,16 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 `openai` driver의 `options`는 `temperature`, `max_tokens`, `system_prompt`, 그리고 `extra_body`(OpenAI SDK의 `extra_body`처럼 요청 본문 최상위에 병합되는 임의 필드 — 위에서 DeepSeek thinking 모드를 끄는 데 사용)를 받습니다.
 
 `openai` driver용 주요 `base_url`: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
+
+`libretranslate` driver는 `base_url`(기본 `https://libretranslate.com`)과 선택적 `key`를 받습니다 — 키는 키 기반 인스턴스에서만 필요합니다:
+
+```php
+'libretranslate' => [
+    'driver'   => 'libretranslate',
+    'base_url' => env('LIBRETRANSLATE_URL', 'http://localhost:5000'),
+    'key'      => env('LIBRETRANSLATE_API_KEY'), // 선택
+],
+```
 
 `google` driver는 두 API 버전 모두 `google`로 두고 `version`으로 고릅니다. v2(기본)는 API `key`, v3(Advanced)는 `project_id`(+ 선택 `location`)와 서비스 계정 / ADC 인증을 사용합니다:
 

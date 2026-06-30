@@ -16,6 +16,7 @@ Built-in drivers:
 - **`google`** — Google Cloud Translation (v2 by default; v3/Advanced via `version`)
 - **`claude`** — native Anthropic Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
 - **`openai`** — OpenAI and any OpenAI-compatible endpoint (DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, self-hosted gateways) via [openai-php/client](https://github.com/openai-php/client), pointed with `base_url`
+- **`libretranslate`** — [LibreTranslate](https://libretranslate.com) (free/open-source, self-hosted or hosted)
 - **`fallback`** — try several translators in order
 
 No heavyweight LLM abstraction layer — each driver talks to its provider's SDK/API directly.
@@ -107,6 +108,16 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
 For the `openai` driver, `options` accepts `temperature`, `max_tokens`, `system_prompt`, and `extra_body` (arbitrary top-level request-body fields merged into the call, like the OpenAI SDK's `extra_body` — used above to turn off DeepSeek's thinking mode).
 
 Common `base_url`s for the `openai` driver: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
+
+The `libretranslate` driver takes a `base_url` (defaults to `https://libretranslate.com`) and an optional `key` — only keyed instances need one:
+
+```php
+'libretranslate' => [
+    'driver'   => 'libretranslate',
+    'base_url' => env('LIBRETRANSLATE_URL', 'http://localhost:5000'),
+    'key'      => env('LIBRETRANSLATE_API_KEY'), // optional
+],
+```
 
 The `google` driver stays `google` for both API versions — pick with `version`. v2 (default) takes an API `key`; v3 (Advanced) takes a `project_id` (and optional `location`) and authenticates with a service account or Application Default Credentials:
 

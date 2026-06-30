@@ -102,6 +102,14 @@ return [
             // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
         ],
 
+        // LibreTranslate (free/open-source, self-hosted or libretranslate.com).
+        // The API key is optional — only keyed instances require one.
+        'libretranslate' => [
+            'driver' => 'libretranslate',
+            'base_url' => env('LIBRETRANSLATE_URL', 'https://libretranslate.com'),
+            'key' => env('LIBRETRANSLATE_API_KEY'),
+        ],
+
         // Failover: try each translator in order, falling back to the next one
         // whenever a translator throws. Set 'default' => 'fallback' to use it.
         'fallback' => [

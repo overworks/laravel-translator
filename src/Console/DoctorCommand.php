@@ -125,6 +125,8 @@ class DoctorCommand extends Command
             'claude' => "model={$config['model']}, " . $this->keyState($config),
             'openai' => "model={$config['model']}, base_url="
                 . ($config['base_url'] ?? 'https://api.openai.com/v1') . ', ' . $this->keyState($config),
+            'libretranslate' => 'base_url=' . ($config['base_url'] ?? 'https://libretranslate.com')
+                . ', ' . $this->keyState($config),
             'fallback' => '→ ' . implode(', ', $config['translators'] ?? []),
             default => 'custom driver',
         };

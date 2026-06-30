@@ -9,6 +9,7 @@ use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
+use Minhyung\LaravelTranslator\Drivers\LibreTranslateDriver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
@@ -139,6 +140,17 @@ it('throws for Google v3 without a project id', function () {
 
     expect(fn () => app(TranslatorManager::class)->via('google'))
         ->toThrow(InvalidArgumentException::class);
+});
+
+it('resolves the LibreTranslate driver', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.libretranslate', [
+        'driver' => 'libretranslate',
+        'base_url' => 'http://localhost:5000',
+    ]);
+
+    expect(app(TranslatorManager::class)->via('libretranslate')->driver())
+        ->toBeInstanceOf(LibreTranslateDriver::class);
 });
 
 it('throws when the OpenAI driver has no model', function () {

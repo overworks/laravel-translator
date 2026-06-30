@@ -24,6 +24,7 @@ use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
+use Minhyung\LaravelTranslator\Drivers\LibreTranslateDriver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
@@ -256,6 +257,19 @@ class TranslatorManager
             $tokenProvider,
             (string) $config['project_id'],
             (string) ($config['location'] ?? 'global'),
+            $name,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createLibretranslateDriver(string $name, array $config): Driver
+    {
+        return new LibreTranslateDriver(
+            $this->container->make(HttpFactory::class),
+            (string) ($config['base_url'] ?? 'https://libretranslate.com'),
+            $config['key'] ?? null,
             $name,
         );
     }
