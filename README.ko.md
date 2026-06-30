@@ -90,7 +90,7 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
         'driver'   => 'openai',
         'base_url' => 'https://api.deepseek.com/v1',
         'key'      => env('DEEPSEEK_API_KEY'),
-        'model'    => 'deepseek-chat',
+        'model'    => 'deepseek-v4-flash',
 
         // 'headers' => ['X-Tenant' => 'acme'], // 추가 HTTP 헤더
         // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt

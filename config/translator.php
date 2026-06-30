@@ -82,7 +82,7 @@ return [
             'driver' => 'openai',
             'base_url' => 'https://api.deepseek.com/v1',
             'key' => env('DEEPSEEK_API_KEY'),
-            'model' => env('TRANSLATOR_DEEPSEEK_MODEL', 'deepseek-chat'),
+            'model' => env('TRANSLATOR_DEEPSEEK_MODEL', 'deepseek-v4-flash'),
 
             // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
             // 'options' => ['temperature' => 0.0],

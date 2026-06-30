@@ -95,7 +95,7 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
         'driver'   => 'openai',
         'base_url' => 'https://api.deepseek.com/v1',
         'key'      => env('DEEPSEEK_API_KEY'),
-        'model'    => 'deepseek-chat',
+        'model'    => 'deepseek-v4-flash',
 
         // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
         // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
