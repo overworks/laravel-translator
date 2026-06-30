@@ -154,6 +154,23 @@ Translator::via('openai')->translate('Hello', 'ko', 'en', [
 ]);
 ```
 
+### 런타임에 translator 빌드
+
+config에 없는 translator가 필요하다면(예: 테넌트별 자격증명) inline config 배열(config 항목과 동일한 형태)로 즉석 생성할 수 있습니다. 결과는 일반 `Translator`이며 캐싱되지 않습니다:
+
+```php
+$translator = Translator::build([
+    'driver' => 'openai',
+    'base_url' => 'https://api.deepseek.com/v1',
+    'key'   => $tenant->deepseek_key,
+    'model' => 'deepseek-v4-flash',
+]);
+
+$translator->translate('Hello', 'ko');
+```
+
+두 번째 인자로 이름을 줄 수 있습니다(결과의 `->translator`와 이벤트에 사용).
+
 ### 의존성 주입
 
 `Contracts\Translator` 계약(contract)은 기본 translator로 바인딩되어 있습니다.

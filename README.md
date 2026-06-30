@@ -159,6 +159,23 @@ Translator::via('openai')->translate('Hello', 'ko', 'en', [
 ]);
 ```
 
+### Building a translator at runtime
+
+Need a translator that isn't in your config — e.g. per-tenant credentials? Build one on the fly from an inline config array (same shape as a config entry). The result is a normal `Translator` (uncached):
+
+```php
+$translator = Translator::build([
+    'driver' => 'openai',
+    'base_url' => 'https://api.deepseek.com/v1',
+    'key'   => $tenant->deepseek_key,
+    'model' => 'deepseek-v4-flash',
+]);
+
+$translator->translate('Hello', 'ko');
+```
+
+Pass a second argument to name it (used on the result's `->translator` and in events).
+
 ### Dependency injection
 
 The `Contracts\Translator` contract is bound to the default translator.

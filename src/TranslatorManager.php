@@ -108,15 +108,34 @@ class TranslatorManager
     }
 
     /**
+     * Build a one-off translator from an inline config array, without a
+     * `translator.translators` entry. The config takes the same shape as a
+     * config entry (`driver` plus its keys); the result is uncached.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public function build(array $config, ?string $name = null): Translator
+    {
+        $driver = $config['driver'] ?? null;
+
+        if (empty($driver)) {
+            throw new InvalidArgumentException('The translator config must specify a "driver".');
+        }
+
+        $name ??= $driver;
+
+        return new Translator(
+            $name,
+            $this->makeDriver($name, $config),
+            $this->container->make(Dispatcher::class),
+        );
+    }
+
+    /**
      * Resolve a translator's driver from its config entry, wrapping it with
      * caching when enabled. Memoized by name.
      */
     protected function resolveDriver(string $name): Driver
-    {
-        return $this->drivers[$name] ??= $this->wrapWithCache($name, $this->build($name));
-    }
-
-    protected function build(string $name): Driver
     {
         $config = $this->getConfig($name);
 
@@ -124,6 +143,14 @@ class TranslatorManager
             throw new InvalidArgumentException("Translator [{$name}] is not defined.");
         }
 
+        return $this->drivers[$name] ??= $this->wrapWithCache($name, $this->makeDriver($name, $config));
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function makeDriver(string $name, array $config): Driver
+    {
         if (! isset($config['driver'])) {
             throw new InvalidArgumentException("Translator [{$name}] does not specify a driver.");
         }

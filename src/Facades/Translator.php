@@ -10,6 +10,7 @@ use Minhyung\LaravelTranslator\TranslatorManager;
 
 /**
  * @method static \Minhyung\LaravelTranslator\Contracts\Translator via(string|null $name = null)
+ * @method static \Minhyung\LaravelTranslator\Translator build(array $config, string|null $name = null)
  * @method static TranslationResult translate(string $text, string $targetLang, string|null $sourceLang = null, array $options = [])
  * @method static array<array-key, TranslationResult> translateBatch(array $texts, string $targetLang, string|null $sourceLang = null, array $options = [])
  *
