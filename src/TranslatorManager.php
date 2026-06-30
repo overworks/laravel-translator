@@ -57,7 +57,7 @@ class TranslatorManager
     /**
      * Get a translator instance by name (the default when omitted).
      */
-    public function translator(?string $name = null): Translator
+    public function via(?string $name = null): Translator
     {
         $name ??= $this->getDefaultTranslator();
 
@@ -229,10 +229,10 @@ class TranslatorManager
                 throw new InvalidArgumentException("The [{$name}] fallback translator cannot reference itself.");
             }
 
-            // Resolve each child lazily through translator() (so it gets its own
+            // Resolve each child lazily through via() (so it gets its own
             // caching) only when it is actually reached. This prevents a child
             // that cannot be constructed from breaking the whole chain.
-            $factories[$child] = fn (): Translator => $this->translator($child);
+            $factories[$child] = fn (): Translator => $this->via($child);
         }
 
         return new FallbackDriver($factories, $this->container->make(LoggerInterface::class));
@@ -283,6 +283,6 @@ class TranslatorManager
      */
     public function __call(string $method, array $parameters): mixed
     {
-        return $this->translator()->{$method}(...$parameters);
+        return $this->via()->{$method}(...$parameters);
     }
 }

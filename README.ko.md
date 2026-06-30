@@ -3,7 +3,7 @@
 [English](README.md) | **한국어**
 
 여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
-`config/filesystems.php`와 동일한 형태입니다: 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driver`** 키로 구현을 고릅니다. `Storage::disk('name')`처럼 `Translator::translator('name')`으로 선택합니다. 번역 결과 캐싱을 기본 제공합니다.
+`config/filesystems.php`와 동일한 형태입니다: 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driver`** 키로 구현을 고릅니다. `Storage::disk('name')`처럼 `Translator::via('name')`으로 선택합니다. 번역 결과 캐싱을 기본 제공합니다.
 
 내장 드라이버:
 
@@ -101,7 +101,7 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 `openai` driver용 주요 `base_url`: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
 
 ```php
-Translator::translator('claude')->translate('Hello', 'ko'); // 결과의 ->translator 는 "claude"
+Translator::via('claude')->translate('Hello', 'ko'); // 결과의 ->translator 는 "claude"
 ```
 
 ## 사용법
@@ -140,10 +140,10 @@ $results['farewell']->text; // "안녕히 가세요"
 ### translator 선택
 
 ```php
-Translator::translator('google')->translate('Hello', 'ko');
+Translator::via('google')->translate('Hello', 'ko');
 
 // 호출 단위 옵션 전달
-Translator::translator('openai')->translate('Hello', 'ko', 'en', [
+Translator::via('openai')->translate('Hello', 'ko', 'en', [
     'temperature'   => 0.0,
     'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
 ]);

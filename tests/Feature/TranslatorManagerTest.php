@@ -20,45 +20,45 @@ beforeEach(function () {
 it('resolves the default translator wrapped in caching when enabled', function () {
     config()->set('translator.cache.enabled', true);
 
-    expect(app(TranslatorManager::class)->translator())->toBeInstanceOf(CachingTranslator::class);
+    expect(app(TranslatorManager::class)->via())->toBeInstanceOf(CachingTranslator::class);
 });
 
 it('returns the bare translator when caching is disabled', function () {
     config()->set('translator.cache.enabled', false);
 
-    expect(app(TranslatorManager::class)->translator())->toBeInstanceOf(DeeplDriver::class);
+    expect(app(TranslatorManager::class)->via())->toBeInstanceOf(DeeplDriver::class);
 });
 
 it('throws a helpful error when the DeepL key is missing', function () {
     config()->set('translator.translators.deepl.key', null);
 
-    expect(fn () => app(TranslatorManager::class)->translator('deepl'))
+    expect(fn () => app(TranslatorManager::class)->via('deepl'))
         ->toThrow(InvalidArgumentException::class);
 });
 
 it('throws when a translator is not defined', function () {
-    expect(fn () => app(TranslatorManager::class)->translator('does-not-exist'))
+    expect(fn () => app(TranslatorManager::class)->via('does-not-exist'))
         ->toThrow(InvalidArgumentException::class);
 });
 
 it('throws when a translator entry has no driver', function () {
     config()->set('translator.translators.broken', ['key' => 'x']);
 
-    expect(fn () => app(TranslatorManager::class)->translator('broken'))
+    expect(fn () => app(TranslatorManager::class)->via('broken'))
         ->toThrow(InvalidArgumentException::class);
 });
 
 it('throws for an unsupported driver', function () {
     config()->set('translator.translators.mystery', ['driver' => 'mystery', 'model' => 'x']);
 
-    expect(fn () => app(TranslatorManager::class)->translator('mystery'))
+    expect(fn () => app(TranslatorManager::class)->via('mystery'))
         ->toThrow(InvalidArgumentException::class);
 });
 
 it('resolves the facade to the manager', function () {
     config()->set('translator.cache.enabled', false);
 
-    expect(Translator::translator())->toBeInstanceOf(DeeplDriver::class);
+    expect(Translator::via())->toBeInstanceOf(DeeplDriver::class);
 });
 
 it('does not clobber Laravel\'s own translator binding', function () {
@@ -73,7 +73,7 @@ it('resolves the native Claude translator', function () {
         'model' => 'claude-3-5-sonnet-latest',
     ]);
 
-    expect(app(TranslatorManager::class)->translator('claude'))->toBeInstanceOf(ClaudeDriver::class);
+    expect(app(TranslatorManager::class)->via('claude'))->toBeInstanceOf(ClaudeDriver::class);
 });
 
 it('throws when the Claude key is missing', function () {
@@ -83,7 +83,7 @@ it('throws when the Claude key is missing', function () {
         'model' => 'claude-3-5-sonnet-latest',
     ]);
 
-    expect(fn () => app(TranslatorManager::class)->translator('claude'))
+    expect(fn () => app(TranslatorManager::class)->via('claude'))
         ->toThrow(InvalidArgumentException::class);
 });
 
@@ -95,7 +95,7 @@ it('resolves the OpenAI translator', function () {
         'model' => 'gpt-4o-mini',
     ]);
 
-    expect(app(TranslatorManager::class)->translator('openai'))->toBeInstanceOf(OpenAiDriver::class);
+    expect(app(TranslatorManager::class)->via('openai'))->toBeInstanceOf(OpenAiDriver::class);
 });
 
 it('resolves an OpenAI-compatible translator via base_url', function () {
@@ -107,13 +107,13 @@ it('resolves an OpenAI-compatible translator via base_url', function () {
         'model' => 'deepseek-chat',
     ]);
 
-    expect(app(TranslatorManager::class)->translator('deepseek'))->toBeInstanceOf(OpenAiDriver::class);
+    expect(app(TranslatorManager::class)->via('deepseek'))->toBeInstanceOf(OpenAiDriver::class);
 });
 
 it('throws when the OpenAI driver has no model', function () {
     config()->set('translator.translators.openai', ['driver' => 'openai', 'key' => 'sk-test', 'model' => null]);
 
-    expect(fn () => app(TranslatorManager::class)->translator('openai'))
+    expect(fn () => app(TranslatorManager::class)->via('openai'))
         ->toThrow(InvalidArgumentException::class);
 });
 
@@ -123,9 +123,9 @@ it('resolves a custom driver registered via extend', function () {
 
     app(TranslatorManager::class)->extend('papago', fn () => stubTranslator('papago'));
 
-    expect(app(TranslatorManager::class)->translator('papago'))
+    expect(app(TranslatorManager::class)->via('papago'))
         ->toBeInstanceOf(TranslatorContract::class)
-        ->and(app(TranslatorManager::class)->translator('papago')->translate('Hello', 'ko')->translator)
+        ->and(app(TranslatorManager::class)->via('papago')->translate('Hello', 'ko')->translator)
         ->toBe('papago');
 });
 
@@ -148,13 +148,13 @@ it('resolves the fallback translator lazily, without constructing children or ca
         'translators' => ['deepl', 'google'],
     ]);
 
-    expect(app(TranslatorManager::class)->translator('fallback'))->toBeInstanceOf(FallbackDriver::class);
+    expect(app(TranslatorManager::class)->via('fallback'))->toBeInstanceOf(FallbackDriver::class);
 });
 
 it('throws when the fallback translator list is empty', function () {
     config()->set('translator.translators.fallback', ['driver' => 'fallback', 'translators' => []]);
 
-    expect(fn () => app(TranslatorManager::class)->translator('fallback'))
+    expect(fn () => app(TranslatorManager::class)->via('fallback'))
         ->toThrow(InvalidArgumentException::class);
 });
 

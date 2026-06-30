@@ -8,7 +8,7 @@
 **English** | [한국어](README.ko.md)
 
 A Laravel package that puts multiple translation services (DeepL, Google Cloud Translation, LLMs, ...) behind **one unified API**.
-It follows the same shape as Laravel's `config/filesystems.php`: you define named **translators**, and each one picks an implementation with a **`driver`** key. Translators are selected with `Translator::translator('name')`, just like `Storage::disk('name')`. Result caching is built in.
+It follows the same shape as Laravel's `config/filesystems.php`: you define named **translators**, and each one picks an implementation with a **`driver`** key. Translators are selected with `Translator::via('name')`, just like `Storage::disk('name')`. Result caching is built in.
 
 Built-in drivers:
 
@@ -106,7 +106,7 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
 Common `base_url`s for the `openai` driver: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
 
 ```php
-Translator::translator('claude')->translate('Hello', 'ko'); // result's ->translator is "claude"
+Translator::via('claude')->translate('Hello', 'ko'); // result's ->translator is "claude"
 ```
 
 ## Usage
@@ -145,10 +145,10 @@ $results['farewell']->text; // "안녕히 가세요"
 ### Selecting a translator
 
 ```php
-Translator::translator('google')->translate('Hello', 'ko');
+Translator::via('google')->translate('Hello', 'ko');
 
 // Per-call options
-Translator::translator('openai')->translate('Hello', 'ko', 'en', [
+Translator::via('openai')->translate('Hello', 'ko', 'en', [
     'temperature'   => 0.0,
     'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
 ]);
