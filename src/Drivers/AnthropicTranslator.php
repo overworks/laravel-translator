@@ -4,27 +4,30 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Drivers;
 
+use Anthropic\Contracts\ClientContract;
+use Anthropic\Responses\Messages\CreateResponse;
 use Minhyung\LaravelTranslator\Contracts\Translator;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
-use OpenAI\Contracts\ClientContract;
 use RuntimeException;
 
 /**
- * Translation driver for any OpenAI-compatible chat completions API, talking to
- * the endpoint directly through openai-php/client.
+ * Native Claude translation driver talking to the Anthropic Messages API
+ * directly through mozex/anthropic-php.
  *
- * This powers both well-known providers (OpenAI, DeepSeek, Gemini, Groq, ...)
- * and arbitrary endpoints — self-hosted gateways, proxies, or vendors that
- * expose the OpenAI schema. Point it at a base URI and an API key in config.
- *
- * Single translations use a plain chat completion; batch translations request a
- * JSON object so every input maps to exactly one output, in order.
+ * Single translations use a plain message; batch translations instruct the
+ * model to return a JSON object so every input maps to exactly one output,
+ * in order (the Messages API has no native JSON mode).
  */
-class OpenAiCompatibleTranslator implements Translator
+class AnthropicTranslator implements Translator
 {
     /**
-     * @param  ClientContract  $client  Configured with the endpoint's base URI and key.
-     * @param  string  $model    Model identifier the endpoint exposes.
+     * Default token ceiling for a response when none is given in options.
+     */
+    protected const DEFAULT_MAX_TOKENS = 4096;
+
+    /**
+     * @param  ClientContract  $client  Configured with an Anthropic API key.
+     * @param  string  $model    Claude model identifier.
      * @param  array<string, mixed>  $options  Defaults: temperature, max_tokens, system_prompt.
      * @param  string  $name     Driver name reported on results.
      */
@@ -32,7 +35,7 @@ class OpenAiCompatibleTranslator implements Translator
         protected ClientContract $client,
         protected string $model,
         protected array $options = [],
-        protected string $name = 'openai-compatible',
+        protected string $name = 'anthropic',
     ) {
     }
 
@@ -44,16 +47,14 @@ class OpenAiCompatibleTranslator implements Translator
     ): TranslationResult {
         $options = array_merge($this->options, $options);
 
-        $response = $this->client->chat()->create($this->payload(
-            messages: [
-                ['role' => 'system', 'content' => $this->systemPrompt($targetLang, $sourceLang, $options)],
-                ['role' => 'user', 'content' => $text],
-            ],
+        $response = $this->client->messages()->create($this->payload(
+            system: $this->systemPrompt($targetLang, $sourceLang, $options),
+            content: $text,
             options: $options,
         ));
 
         return new TranslationResult(
-            text: trim((string) ($response->choices[0]->message->content ?? '')),
+            text: trim($this->textFrom($response)),
             targetLang: $targetLang,
             driver: $this->name,
             detectedSourceLang: $sourceLang,
@@ -74,19 +75,13 @@ class OpenAiCompatibleTranslator implements Translator
         $keys = array_keys($texts);
         $values = array_values($texts);
 
-        $response = $this->client->chat()->create($this->payload(
-            messages: [
-                ['role' => 'system', 'content' => $this->systemPrompt($targetLang, $sourceLang, $options)],
-                ['role' => 'user', 'content' => $this->batchPrompt($values)],
-            ],
+        $response = $this->client->messages()->create($this->payload(
+            system: $this->systemPrompt($targetLang, $sourceLang, $options),
+            content: $this->batchPrompt($values),
             options: $options,
-            json: true,
         ));
 
-        $translations = $this->decodeBatch(
-            (string) ($response->choices[0]->message->content ?? ''),
-            count($values),
-        );
+        $translations = $this->decodeBatch($this->textFrom($response), count($values));
 
         $results = array_map(
             fn (string $translation): TranslationResult => new TranslationResult(
@@ -102,32 +97,43 @@ class OpenAiCompatibleTranslator implements Translator
     }
 
     /**
-     * Build the chat completion request payload.
+     * Build the Messages API request payload.
      *
-     * @param  array<int, array<string, string>>  $messages
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
-    protected function payload(array $messages, array $options, bool $json = false): array
+    protected function payload(string $system, string $content, array $options): array
     {
         $payload = [
             'model' => $this->model,
-            'messages' => $messages,
+            'max_tokens' => $options['max_tokens'] ?? self::DEFAULT_MAX_TOKENS,
+            'system' => $system,
+            'messages' => [
+                ['role' => 'user', 'content' => $content],
+            ],
         ];
 
         if (isset($options['temperature'])) {
             $payload['temperature'] = $options['temperature'];
         }
 
-        if (isset($options['max_tokens'])) {
-            $payload['max_tokens'] = $options['max_tokens'];
-        }
-
-        if ($json) {
-            $payload['response_format'] = ['type' => 'json_object'];
-        }
-
         return $payload;
+    }
+
+    /**
+     * Pull the concatenated text from the response's text content blocks.
+     */
+    protected function textFrom(CreateResponse $response): string
+    {
+        $text = '';
+
+        foreach ($response->content as $block) {
+            if (($block->type ?? null) === 'text') {
+                $text .= $block->text ?? '';
+            }
+        }
+
+        return $text;
     }
 
     /**
@@ -137,18 +143,32 @@ class OpenAiCompatibleTranslator implements Translator
      */
     protected function decodeBatch(string $content, int $expected): array
     {
-        $decoded = json_decode($content, true);
+        $decoded = json_decode($this->stripCodeFence($content), true);
         $translations = is_array($decoded) ? ($decoded['translations'] ?? null) : null;
 
         if (! is_array($translations) || count($translations) !== $expected) {
             throw new RuntimeException(sprintf(
-                'OpenAI-compatible batch translation returned %s, expected %d items.',
+                'Anthropic batch translation returned %s, expected %d items.',
                 is_array($translations) ? count($translations) . ' items' : 'a non-array result',
                 $expected,
             ));
         }
 
         return array_map(static fn ($t): string => (string) $t, array_values($translations));
+    }
+
+    /**
+     * Strip a Markdown code fence the model may wrap JSON in.
+     */
+    protected function stripCodeFence(string $content): string
+    {
+        $content = trim($content);
+
+        if (str_starts_with($content, '```')) {
+            $content = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $content) ?? $content;
+        }
+
+        return $content;
     }
 
     /**
@@ -177,7 +197,7 @@ class OpenAiCompatibleTranslator implements Translator
      */
     protected function batchPrompt(array $texts): string
     {
-        $lines = ['Translate each of the following texts. Respond with a JSON object of the form '
+        $lines = ['Translate each of the following texts. Respond with ONLY a JSON object of the form '
             . '{"translations": [...]}, where the array holds one translation per text in the exact '
             . 'same order, and nothing else.', ''];
 

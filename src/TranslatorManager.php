@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator;
 
+use Anthropic\Factory as AnthropicFactory;
 use DeepL\DeepLClient;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
@@ -12,11 +13,11 @@ use Illuminate\Support\Manager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Drivers\AnthropicTranslator;
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
 use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
 use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
 use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
-use Minhyung\LaravelTranslator\Drivers\LlmTranslator;
 use Minhyung\LaravelTranslator\Drivers\OpenAiCompatibleTranslator;
 use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
@@ -28,6 +29,24 @@ use Psr\Log\LoggerInterface;
  */
 class TranslatorManager extends Manager
 {
+    /**
+     * Well-known providers that speak the OpenAI chat-completions schema,
+     * mapped to their default base URI. A driver entry may override the URI
+     * with its own "base_uri"; an unlisted name needs an explicit "base_uri".
+     *
+     * @var array<string, string>
+     */
+    protected const OPENAI_COMPATIBLE_PRESETS = [
+        'openai' => 'https://api.openai.com/v1',
+        'deepseek' => 'https://api.deepseek.com/v1',
+        'groq' => 'https://api.groq.com/openai/v1',
+        'mistral' => 'https://api.mistral.ai/v1',
+        'xai' => 'https://api.x.ai/v1',
+        'gemini' => 'https://generativelanguage.googleapis.com/v1beta/openai',
+        'openrouter' => 'https://openrouter.ai/api/v1',
+        'ollama' => 'http://localhost:11434/v1',
+    ];
+
     public function getDefaultDriver()
     {
         return $this->config()->get('translator.default', 'deepl');
@@ -60,38 +79,44 @@ class TranslatorManager extends Manager
     }
 
     /**
-     * Build an LLM-backed driver (via Prism) whose name is the Prism provider —
-     * e.g. "openai", "anthropic", "gemini". The Prism provider defaults to the
-     * name and may be overridden with a "provider" config key.
+     * Native Claude driver talking to the Anthropic Messages API directly.
      */
-    protected function buildLlmDriver(string $name): Translator
+    protected function createAnthropicDriver(): Translator
     {
-        $config = $this->config()->get("translator.drivers.{$name}", []);
-
+        $config = $this->config()->get('translator.drivers.anthropic', []);
+        $key = $config['key'] ?? null;
         $model = $config['model'] ?? null;
 
-        if (! is_array($config) || empty($model)) {
+        if (empty($key)) {
             throw new InvalidArgumentException(
-                "The [{$name}] driver requires a model. Set translator.drivers.{$name}.model."
+                'The Anthropic driver requires an API key. Set ANTHROPIC_API_KEY or translator.drivers.anthropic.key.'
             );
         }
 
-        return new LlmTranslator(
-            $config['provider'] ?? $name,
-            $model,
-            $config['options'] ?? [],
-            $name,
-        );
+        if (empty($model)) {
+            throw new InvalidArgumentException(
+                'The Anthropic driver requires a model. Set translator.drivers.anthropic.model.'
+            );
+        }
+
+        $client = (new AnthropicFactory())->withApiKey($key)->make();
+
+        return new AnthropicTranslator($client, $model, $config['options'] ?? [], 'anthropic');
     }
 
     /**
-     * Build a driver that talks to an arbitrary OpenAI-compatible chat
-     * completions endpoint directly (no Prism). A drivers entry opts in by
-     * setting a "base_uri"; "key" and optional "headers" configure the client.
+     * Build a driver for any OpenAI-compatible chat-completions endpoint,
+     * talking to it directly through openai-php/client. The base URI comes
+     * from the entry's "base_uri", falling back to a built-in preset for
+     * well-known providers; "key" and optional "headers" configure the client.
      */
     protected function buildOpenAiCompatibleDriver(string $name): Translator
     {
         $config = $this->config()->get("translator.drivers.{$name}", []);
+
+        if (! is_array($config)) {
+            $config = [];
+        }
 
         $model = $config['model'] ?? null;
 
@@ -101,8 +126,17 @@ class TranslatorManager extends Manager
             );
         }
 
+        $baseUri = $config['base_uri'] ?? static::OPENAI_COMPATIBLE_PRESETS[$name] ?? null;
+
+        if (empty($baseUri)) {
+            throw new InvalidArgumentException(
+                "The [{$name}] driver is not a known provider. Set translator.drivers.{$name}.base_uri "
+                . 'to its OpenAI-compatible endpoint.'
+            );
+        }
+
         $factory = (new OpenAiFactory())
-            ->withBaseUri($config['base_uri'])
+            ->withBaseUri($baseUri)
             ->withApiKey((string) ($config['key'] ?? ''));
 
         foreach ($config['headers'] ?? [] as $header => $value) {
@@ -150,15 +184,12 @@ class TranslatorManager extends Manager
     {
         $driver = (string) $driver;
 
-        // Built-in drivers (deepl, google, fallback) and custom extend()
-        // creators win first; an entry with a "base_uri" is a direct
-        // OpenAI-compatible endpoint; any other name is a Prism LLM driver.
-        $resolved = match (true) {
-            isset($this->customCreators[$driver]),
-            method_exists($this, 'create' . Str::studly($driver) . 'Driver') => parent::createDriver($driver),
-            $this->config()->get("translator.drivers.{$driver}.base_uri") !== null => $this->buildOpenAiCompatibleDriver($driver),
-            default => $this->buildLlmDriver($driver),
-        };
+        // Built-in drivers (deepl, google, anthropic, fallback) and custom
+        // extend() creators win first; any other name is treated as an
+        // OpenAI-compatible endpoint (preset or explicit "base_uri").
+        $resolved = isset($this->customCreators[$driver]) || method_exists($this, 'create' . Str::studly($driver) . 'Driver')
+            ? parent::createDriver($driver)
+            : $this->buildOpenAiCompatibleDriver($driver);
 
         return $this->wrapWithCache($driver, $resolved);
     }

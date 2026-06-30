@@ -8,7 +8,11 @@
         "translation",
         "translator",
         "deepl",
-        "google-cloud-translation"
+        "google-cloud-translation",
+        "anthropic",
+        "claude",
+        "openai",
+        "llm"
     ],
     "authors": [
         {
@@ -23,8 +27,8 @@
         "illuminate/contracts": "^12.0|^13.0",
         "illuminate/http": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
+        "mozex/anthropic-php": "^1.7",
         "openai-php/client": "^0.20.0",
-        "prism-php/prism": "^0.100",
         "psr/log": "^3.0"
     },
     "require-dev": {

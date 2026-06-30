@@ -19,10 +19,14 @@ return [
     | Drivers
     |--------------------------------------------------------------------------
     |
-    | Each driver is keyed by name. The built-in names (deepl, google,
-    | fallback) have dedicated implementations; any other name is treated as a
-    | Prism LLM driver, where the key itself is the Prism provider name
-    | (override it with an optional "provider" key). Register as many as you like.
+    | Each driver is keyed by name. "deepl", "google", "anthropic", and
+    | "fallback" have dedicated implementations. Any other name is treated as
+    | an OpenAI-compatible endpoint: well-known providers (openai, deepseek,
+    | gemini, groq, mistral, xai, openrouter, ollama) resolve to a built-in
+    | base URI automatically, and any other name just needs an explicit
+    | "base_uri". Each LLM entry takes a "key", a "model", and optional
+    | "options" (temperature, max_tokens, system_prompt). Register as many as
+    | you like.
     |
     */
 
@@ -37,48 +41,49 @@ return [
             'key' => env('GOOGLE_TRANSLATE_KEY'),
         ],
 
-        // LLM-backed translation via Prism. Any driver name that is not a
-        // built-in (deepl, google, fallback) is treated as a Prism LLM driver,
-        // so the key IS the Prism provider name. Configure the provider's own
-        // credentials in Prism's config (config/prism.php). Each entry just
-        // needs a "model" (and optional "options"); "provider" overrides the
-        // Prism provider if you want the key to be an alias.
-        'openai' => [
-            'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-4o-mini'),
+        // Native Claude driver (Anthropic Messages API via mozex/anthropic-php).
+        'anthropic' => [
+            'key' => env('ANTHROPIC_API_KEY'),
+            'model' => env('TRANSLATOR_ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
 
             'options' => [
-                // 'temperature'      => 0.0,
-                // 'max_tokens'       => 1000,
-                // 'system_prompt'    => 'Custom prompt with {source} and {target} placeholders.',
-                // 'provider_options' => [],
+                // 'temperature'   => 0.0,
+                // 'max_tokens'    => 4096,
+                // 'system_prompt' => 'Custom prompt with {source} and {target} placeholders.',
             ],
         ],
 
-        'anthropic' => [
-            'model' => env('TRANSLATOR_ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
+        // OpenAI-compatible providers. The base URI is resolved from a built-in
+        // preset for each well-known name; supply the provider's API key and a
+        // model. Drop any you do not use.
+        'openai' => [
+            'key' => env('OPENAI_API_KEY'),
+            'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-4o-mini'),
         ],
 
         'gemini' => [
+            'key' => env('GEMINI_API_KEY'),
             'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.0-flash'),
         ],
 
         'deepseek' => [
+            'key' => env('DEEPSEEK_API_KEY'),
             'model' => env('TRANSLATOR_DEEPSEEK_MODEL', 'deepseek-chat'),
         ],
 
         'openrouter' => [
+            'key' => env('OPENROUTER_API_KEY'),
             'model' => env('TRANSLATOR_OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
         ],
 
-        // Self-hosted models via Ollama.
+        // Self-hosted models via Ollama (no key required by default).
         'ollama' => [
             'model' => env('TRANSLATOR_OLLAMA_MODEL', 'llama3.2'),
         ],
 
         // Custom OpenAI-compatible endpoint (self-hosted gateways, proxies, or
-        // vendors exposing the OpenAI chat schema). Any driver entry with a
-        // "base_uri" talks to that endpoint directly via openai-php/client,
-        // bypassing Prism. Register as many as you like under different keys.
+        // vendors exposing the OpenAI chat schema that are not preset above).
+        // Provide the endpoint's "base_uri". Register as many as you like.
         'custom' => [
             'base_uri' => env('TRANSLATOR_CUSTOM_BASE_URI'), // e.g. https://my-gateway.test/v1
             'key' => env('TRANSLATOR_CUSTOM_KEY'),

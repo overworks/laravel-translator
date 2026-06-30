@@ -5,7 +5,14 @@
 여러 번역 서비스(DeepL, Google Cloud Translation, LLM 등)를 **하나의 통일된 API**로 사용하는 Laravel 패키지입니다.
 Laravel 표준 Manager/Driver 패턴으로 설계되어 드라이버를 쉽게 추가/교체할 수 있고, 번역 결과 캐싱을 기본 제공합니다.
 
-지원 드라이버: **DeepL**, **Google Cloud Translation (v2)**, **LLM** ([Prism](https://prismphp.com) 기반 — OpenAI/Anthropic/Gemini 등), 그리고 임의의 **OpenAI 호환 엔드포인트** ([openai-php/client](https://github.com/openai-php/client) 기반).
+지원 드라이버:
+
+- **DeepL**
+- **Google Cloud Translation (v2)**
+- **Anthropic / Claude** — 네이티브 Messages API ([mozex/anthropic-php](https://github.com/mozex/anthropic-php) 기반)
+- **OpenAI 호환 엔드포인트** ([openai-php/client](https://github.com/openai-php/client) 기반) — 잘 알려진 프로바이더(OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, OpenRouter, Ollama)는 이름만으로 동작하고, 그 외 엔드포인트는 `base_uri`로 지정.
+
+무거운 LLM 추상화 레이어 없이, 각 드라이버가 프로바이더 SDK/API에 직접 요청합니다.
 
 ## 요구 사항
 
@@ -31,7 +38,7 @@ php artisan vendor:publish --tag=translator-config
 `config/translator.php` 또는 `.env`:
 
 ```dotenv
-TRANSLATOR_DRIVER=deepl        # 기본 드라이버: deepl | google | openai | anthropic | ...
+TRANSLATOR_DRIVER=deepl        # 기본 드라이버: deepl | google | anthropic | openai | ...
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -39,13 +46,17 @@ DEEPL_AUTH_KEY=xxxxxxxx:fx
 # Google Cloud Translation (v2, API key)
 GOOGLE_TRANSLATE_KEY=AIza...
 
-# LLM (Prism) — 프로바이더별 모델 지정
-TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+# Anthropic / Claude (네이티브)
+ANTHROPIC_API_KEY=sk-ant-...
 TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+
+# OpenAI 호환 프로바이더 — API 키 + 선택 모델 지정
+OPENAI_API_KEY=sk-...
+TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=AIza...
 TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
-TRANSLATOR_DEEPSEEK_MODEL=deepseek-chat
-TRANSLATOR_OPENROUTER_MODEL=openai/gpt-4o-mini
-TRANSLATOR_OLLAMA_MODEL=llama3.2
+DEEPSEEK_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
 
 # 캐싱
 TRANSLATOR_CACHE=true
@@ -53,28 +64,29 @@ TRANSLATOR_CACHE_STORE=          # 비우면 기본 스토어 사용
 TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```
 
-> **LLM 번역**은 [Prism](https://prismphp.com)을 사용합니다. 프로바이더 API 키 등은 Prism 설정(`config/prism.php`)에서 관리합니다.
-> 배치 번역은 structured output으로 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
+> 배치 번역은 모델에 JSON 객체를 요청해 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
 
 ### LLM 프로바이더 (여러 개 등록)
 
-내장 프로바이더(`deepl`, `google`, `fallback`)가 아닌 이름은 모두 **Prism LLM 프로바이더**로 취급됩니다.
-즉 `drivers` 배열의 **키가 곧 Prism 프로바이더 이름**이고, 각 항목은 `model`(+ 선택 `options`)만 있으면 됩니다.
-여러 LLM 프로바이더를 등록해 failover 체인에 넣을 때 유용합니다.
+`deepl`, `google`, `anthropic`, `fallback`이 아닌 이름은 모두 **OpenAI 호환** 엔드포인트로 취급됩니다.
+잘 알려진 프로바이더는 base URI가 내장 프리셋으로 자동 해석되므로, `key`와 `model`만 주면 됩니다:
 
 ```php
 // config/translator.php
 'drivers' => [
-    'openai'     => ['model' => 'gpt-4o-mini'],
-    'anthropic'  => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'     => ['model' => 'gemini-2.0-flash'],
-    'deepseek'   => ['model' => 'deepseek-chat'],
-    'openrouter' => ['model' => 'openai/gpt-4o-mini'],
-    'ollama'     => ['model' => 'llama3.2'],
-
-    // 키를 별칭으로 쓰고 싶으면 'provider'로 실제 Prism 프로바이더를 지정
-    'claude'     => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'openai'     => ['key' => env('OPENAI_API_KEY'),     'model' => 'gpt-4o-mini'],
+    'gemini'     => ['key' => env('GEMINI_API_KEY'),     'model' => 'gemini-2.0-flash'],
+    'deepseek'   => ['key' => env('DEEPSEEK_API_KEY'),   'model' => 'deepseek-chat'],
+    'openrouter' => ['key' => env('OPENROUTER_API_KEY'), 'model' => 'openai/gpt-4o-mini'],
+    'ollama'     => ['model' => 'llama3.2'], // 셀프호스트, 키 불필요
 ],
+```
+
+프리셋은 `openai`, `gemini`, `deepseek`, `groq`, `mistral`, `xai`, `openrouter`, `ollama`를 지원합니다.
+Claude는 1st-party **네이티브** 드라이버(`anthropic`)라 마찬가지로 `key`와 `model`을 받습니다:
+
+```php
+'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
 ```
 
 ```php
@@ -83,8 +95,8 @@ Translator::driver('anthropic')->translate('Hello', 'ko'); // 결과의 ->driver
 
 ### 커스텀 OpenAI 호환 엔드포인트
 
-Prism이 1st-party로 지원하지 않는 엔드포인트(사내 게이트웨이, 프록시, OpenAI chat 스키마를 노출하는 벤더 등)는 드라이버 항목에 **`base_uri`**를 넣으면 됩니다.
-이런 항목은 Prism을 거치지 않고 [openai-php/client](https://github.com/openai-php/client)로 엔드포인트에 직접 요청합니다. 서로 다른 키로 여러 개 등록할 수 있습니다.
+프리셋에 없는 엔드포인트(사내 게이트웨이, 프록시, OpenAI chat 스키마를 노출하는 벤더 등)는 드라이버 항목에 **`base_uri`**를 넣으면 됩니다.
+서로 다른 키로 여러 개 등록할 수 있습니다.
 
 ```php
 // config/translator.php
@@ -175,9 +187,9 @@ public function __construct(private Translator $translator) {}
 'default' => 'fallback',
 
 'drivers' => [
-    // 여러 LLM 프로바이더를 자유롭게 조합
-    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'    => ['model' => 'gemini-2.0-flash'],
+    // 여러 프로바이더를 자유롭게 조합
+    'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
+    'gemini'    => ['key' => env('GEMINI_API_KEY'),    'model' => 'gemini-2.0-flash'],
 
     'fallback' => [
         'drivers' => ['deepl', 'anthropic', 'gemini'],

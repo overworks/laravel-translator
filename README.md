@@ -10,7 +10,14 @@
 A Laravel package that puts multiple translation services (DeepL, Google Cloud Translation, LLMs, ...) behind **one unified API**.
 It is built on Laravel's standard Manager/Driver pattern, so drivers are easy to add or swap, and it ships with translation-result caching out of the box.
 
-Supported drivers: **DeepL**, **Google Cloud Translation (v2)**, **LLM** (powered by [Prism](https://prismphp.com) — OpenAI/Anthropic/Gemini, etc.), and any **custom OpenAI-compatible endpoint** (via [openai-php/client](https://github.com/openai-php/client)).
+Supported drivers:
+
+- **DeepL**
+- **Google Cloud Translation (v2)**
+- **Anthropic / Claude** — native Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
+- **OpenAI-compatible endpoints** via [openai-php/client](https://github.com/openai-php/client) — well-known providers (OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, OpenRouter, Ollama) work by name; any other endpoint works with a `base_uri`.
+
+No heavyweight LLM abstraction layer — each driver talks to its provider's SDK/API directly.
 
 ## Requirements
 
@@ -36,7 +43,7 @@ php artisan vendor:publish --tag=translator-config
 In `config/translator.php` or your `.env`:
 
 ```dotenv
-TRANSLATOR_DRIVER=deepl        # default driver: deepl | google | openai | anthropic | ...
+TRANSLATOR_DRIVER=deepl        # default driver: deepl | google | anthropic | openai | ...
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -44,13 +51,17 @@ DEEPL_AUTH_KEY=xxxxxxxx:fx
 # Google Cloud Translation (v2, API key)
 GOOGLE_TRANSLATE_KEY=AIza...
 
-# LLM (Prism) — per-provider model overrides
-TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+# Anthropic / Claude (native)
+ANTHROPIC_API_KEY=sk-ant-...
 TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+
+# OpenAI-compatible providers — API key + optional model override
+OPENAI_API_KEY=sk-...
+TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=AIza...
 TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
-TRANSLATOR_DEEPSEEK_MODEL=deepseek-chat
-TRANSLATOR_OPENROUTER_MODEL=openai/gpt-4o-mini
-TRANSLATOR_OLLAMA_MODEL=llama3.2
+DEEPSEEK_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
 
 # Caching
 TRANSLATOR_CACHE=true
@@ -58,28 +69,29 @@ TRANSLATOR_CACHE_STORE=          # empty = the application's default store
 TRANSLATOR_CACHE_TTL=86400       # seconds; empty = cache forever
 ```
 
-> **LLM translation** uses [Prism](https://prismphp.com). Provider API keys and the like are managed in Prism's own config (`config/prism.php`).
-> Batch translation uses structured output to guarantee one in-order result per input, and throws if the counts don't match.
+> Batch translation asks the model for a JSON object with one in-order result per input, and throws if the counts don't match.
 
 ### LLM providers (register as many as you like)
 
-Any driver name that is **not** a built-in (`deepl`, `google`, `fallback`) is treated as a **Prism LLM driver**.
-In other words, the **key in the `drivers` array is the Prism provider name**, and each entry just needs a `model` (plus optional `options`).
-This is handy for registering several LLM providers and dropping them into a failover chain.
+Every name that is **not** `deepl`, `google`, `anthropic`, or `fallback` is treated as an **OpenAI-compatible** endpoint.
+Well-known providers resolve to a built-in base URI automatically — just give a `key` and a `model`:
 
 ```php
 // config/translator.php
 'drivers' => [
-    'openai'     => ['model' => 'gpt-4o-mini'],
-    'anthropic'  => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'     => ['model' => 'gemini-2.0-flash'],
-    'deepseek'   => ['model' => 'deepseek-chat'],
-    'openrouter' => ['model' => 'openai/gpt-4o-mini'],
-    'ollama'     => ['model' => 'llama3.2'],
-
-    // Use the key as an alias by pointing 'provider' at the real Prism provider
-    'claude'     => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'openai'     => ['key' => env('OPENAI_API_KEY'),     'model' => 'gpt-4o-mini'],
+    'gemini'     => ['key' => env('GEMINI_API_KEY'),     'model' => 'gemini-2.0-flash'],
+    'deepseek'   => ['key' => env('DEEPSEEK_API_KEY'),   'model' => 'deepseek-chat'],
+    'openrouter' => ['key' => env('OPENROUTER_API_KEY'), 'model' => 'openai/gpt-4o-mini'],
+    'ollama'     => ['model' => 'llama3.2'], // self-hosted, no key
 ],
+```
+
+Presets cover `openai`, `gemini`, `deepseek`, `groq`, `mistral`, `xai`, `openrouter`, and `ollama`.
+Claude is a first-class **native** driver (`anthropic`), so it takes a `key` and `model` too:
+
+```php
+'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
 ```
 
 ```php
@@ -88,8 +100,8 @@ Translator::driver('anthropic')->translate('Hello', 'ko'); // result's ->driver 
 
 ### Custom OpenAI-compatible endpoints
 
-For endpoints that Prism does not ship as a first-class provider — self-hosted gateways, proxies, or vendors that expose the OpenAI chat schema — give the driver entry a **`base_uri`**.
-Such entries talk to the endpoint directly through [openai-php/client](https://github.com/openai-php/client), bypassing Prism. Register as many as you like under different keys.
+For an endpoint that is not preset above — self-hosted gateways, proxies, or vendors that expose the OpenAI chat schema — give the driver entry a **`base_uri`**.
+Register as many as you like under different keys.
 
 ```php
 // config/translator.php
@@ -180,9 +192,9 @@ It tries each driver in the listed order and moves on to the next whenever a dri
 'default' => 'fallback',
 
 'drivers' => [
-    // Freely combine multiple LLM providers
-    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'    => ['model' => 'gemini-2.0-flash'],
+    // Freely combine any providers
+    'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
+    'gemini'    => ['key' => env('GEMINI_API_KEY'),    'model' => 'gemini-2.0-flash'],
 
     'fallback' => [
         'drivers' => ['deepl', 'anthropic', 'gemini'],
