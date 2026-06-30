@@ -26,6 +26,7 @@ use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
 use Minhyung\LaravelTranslator\Drivers\LibreTranslateDriver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
+use Minhyung\LaravelTranslator\Drivers\RetryingDriver;
 use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
 
@@ -130,7 +131,7 @@ class TranslatorManager
 
         return new Translator(
             $name,
-            $this->makeDriver($name, $config),
+            $this->wrapWithRetry($config, $this->makeDriver($name, $config)),
             $this->container->make(Dispatcher::class),
         );
     }
@@ -147,7 +148,10 @@ class TranslatorManager
             throw new InvalidArgumentException("Translator [{$name}] is not defined.");
         }
 
-        return $this->drivers[$name] ??= $this->wrapWithCache($name, $this->makeDriver($name, $config));
+        return $this->drivers[$name] ??= $this->wrapWithCache(
+            $name,
+            $this->wrapWithRetry($config, $this->makeDriver($name, $config)),
+        );
     }
 
     /**
@@ -353,6 +357,36 @@ class TranslatorManager
             $this->container->make(LoggerInterface::class),
             $this->container->make(Dispatcher::class),
         );
+    }
+
+    /**
+     * Wrap a driver with retries when the translator opts in via a "retry"
+     * config key: either an int (max attempts) or ['times' => , 'sleep' => ].
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function wrapWithRetry(array $config, Driver $driver): Driver
+    {
+        // A fallback already tries alternatives; retrying the whole chain (and
+        // its children, which retry on their own) is not what you want.
+        if ($driver instanceof FallbackDriver) {
+            return $driver;
+        }
+
+        $retry = $config['retry'] ?? null;
+
+        if (empty($retry)) {
+            return $driver;
+        }
+
+        $times = (int) (is_array($retry) ? ($retry['times'] ?? 3) : $retry);
+        $sleep = (int) (is_array($retry) ? ($retry['sleep'] ?? 200) : 200);
+
+        if ($times <= 1) {
+            return $driver;
+        }
+
+        return new RetryingDriver($driver, $times, $sleep);
     }
 
     protected function wrapWithCache(string $name, Driver $driver): Driver

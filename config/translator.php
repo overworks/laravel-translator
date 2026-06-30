@@ -62,11 +62,15 @@ return [
             ],
         ],
 
-        // OpenAI via openai-php/client.
+        // OpenAI via openai-php/client. Any translator may add a "retry" key to
+        // retry transient failures: an int (max attempts) or
+        // ['times' => 3, 'sleep' => 200] (sleep is the base backoff in ms).
         'openai' => [
             'driver' => 'openai',
             'key' => env('OPENAI_API_KEY'),
             'model' => env('TRANSLATOR_OPENAI_MODEL', 'gpt-5.4-mini'),
+
+            // 'retry' => ['times' => 3, 'sleep' => 200],
         ],
 
         // Any OpenAI-compatible endpoint reuses the "openai" driver with its own

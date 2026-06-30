@@ -248,6 +248,21 @@ php artisan translator:doctor --ping
 동일한 입력(텍스트 · 소스/타깃 언어 · 옵션)은 Laravel 캐시에서 즉시 반환되어 API 호출과 비용을 줄입니다.
 배치 번역 시에는 **캐시 미스 항목만** 모아 한 번에 호출합니다.
 
+## 재시도
+
+어떤 translator든 `retry` 키로 일시적 프로바이더 오류(타임아웃, 429/5xx)를 흘려보낼 수 있습니다 — 시도 횟수(int) 또는 `['times' => , 'sleep' => ]`(sleep은 ms 단위 기본 백오프, 시도 횟수에 비례):
+
+```php
+'openai' => [
+    'driver' => 'openai',
+    'key'    => env('OPENAI_API_KEY'),
+    'model'  => 'gpt-5.4-mini',
+    'retry'  => ['times' => 3, 'sleep' => 200], // 또는: 'retry' => 3
+],
+```
+
+재시도는 캐싱 **안쪽**에 위치하며(캐시 히트는 재시도하지 않음) translator별로 적용됩니다 — `fallback`의 각 자식에도 적용되어, 체인이 넘어가기 전에 프로바이더가 스스로 회복할 기회를 줍니다.
+
 ## Failover
 
 특정 프로바이더가 장애를 일으킬 때 다음으로 자동 전환하려면 `fallback` driver로 translator를 정의합니다.

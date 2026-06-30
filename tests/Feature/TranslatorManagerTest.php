@@ -11,6 +11,7 @@ use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
 use Minhyung\LaravelTranslator\Drivers\LibreTranslateDriver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
+use Minhyung\LaravelTranslator\Drivers\RetryingDriver;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
 
@@ -158,6 +159,28 @@ it('throws when the OpenAI driver has no model', function () {
 
     expect(fn () => app(TranslatorManager::class)->via('openai'))
         ->toThrow(InvalidArgumentException::class);
+});
+
+it('wraps a driver with retries when the retry option is set', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.flaky', [
+        'driver' => 'deepl',
+        'key' => 'k:fx',
+        'retry' => ['times' => 3, 'sleep' => 0],
+    ]);
+
+    expect(app(TranslatorManager::class)->via('flaky')->driver())->toBeInstanceOf(RetryingDriver::class);
+});
+
+it('does not wrap a fallback driver with retries', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.safe', [
+        'driver' => 'fallback',
+        'translators' => ['deepl'],
+        'retry' => 5,
+    ]);
+
+    expect(app(TranslatorManager::class)->via('safe')->driver())->toBeInstanceOf(FallbackDriver::class);
 });
 
 it('resolves a custom driver registered via extend', function () {

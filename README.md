@@ -253,6 +253,21 @@ When `translator.cache.enabled` is on, every driver is wrapped in a `CachingDriv
 Identical inputs (text · source/target language · options) are served straight from the Laravel cache, cutting API calls and cost.
 For batch translation, only the **cache misses** are sent to the provider in a single call.
 
+## Retries
+
+Any translator can shrug off transient provider errors (timeouts, 429/5xx) by adding a `retry` key — an attempt count, or `['times' => , 'sleep' => ]` (sleep is the base backoff in ms, multiplied by the attempt number):
+
+```php
+'openai' => [
+    'driver' => 'openai',
+    'key'    => env('OPENAI_API_KEY'),
+    'model'  => 'gpt-5.4-mini',
+    'retry'  => ['times' => 3, 'sleep' => 200], // or just: 'retry' => 3
+],
+```
+
+Retries sit inside caching (a cache hit never retries) and apply per translator — including each child of a `fallback`, so a provider self-heals before the chain moves on.
+
 ## Failover
 
 To automatically switch to the next provider when one fails, define a translator with the `fallback` driver.
