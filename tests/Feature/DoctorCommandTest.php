@@ -56,3 +56,12 @@ it('fails when the default translator is not defined', function () {
 
     $this->artisan('translator:doctor')->assertFailed();
 });
+
+it('fails when no default translator is set', function () {
+    config()->set('translator.default', '');
+    config()->set('translator.translators', [
+        'deepl' => ['driver' => 'deepl', 'key' => 'k:fx'],
+    ]);
+
+    $this->artisan('translator:doctor')->assertFailed();
+});

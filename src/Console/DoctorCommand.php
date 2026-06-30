@@ -19,15 +19,18 @@ class DoctorCommand extends Command
     {
         /** @var array<string, mixed> $translators */
         $translators = (array) config('translator.translators', []);
-        $default = (string) config('translator.default', '');
+        $default = config('translator.default');
 
         $healthy = true;
 
-        $this->line("Default translator: <comment>{$default}</comment>");
+        $this->line('Default translator: <comment>' . ($default ?: '(none)') . '</comment>');
         $this->line('Cache: ' . (config('translator.cache.enabled') ? 'enabled' : 'disabled'));
         $this->newLine();
 
-        if ($default !== '' && ! isset($translators[$default])) {
+        if (empty($default)) {
+            $this->components->warn('No default translator is set (translator.default).');
+            $healthy = false;
+        } elseif (! isset($translators[$default])) {
             $this->components->warn("Default translator [{$default}] is not defined.");
             $healthy = false;
         }
