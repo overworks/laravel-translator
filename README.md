@@ -171,7 +171,7 @@ public function __construct(private Translator $translator) {}
 
 ## Caching
 
-When `translator.cache.enabled` is on, every translator is wrapped in a `CachingTranslator`.
+When `translator.cache.enabled` is on, every driver is wrapped in a `CachingDriver`.
 Identical inputs (text · source/target language · options) are served straight from the Laravel cache, cutting API calls and cost.
 For batch translation, only the **cache misses** are sent to the provider in a single call.
 

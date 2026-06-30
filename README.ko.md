@@ -166,7 +166,7 @@ public function __construct(private Translator $translator) {}
 
 ## 캐싱
 
-`translator.cache.enabled`가 켜져 있으면 모든 translator가 `CachingTranslator`로 감싸집니다.
+`translator.cache.enabled`가 켜져 있으면 모든 driver가 `CachingDriver`로 감싸집니다.
 동일한 입력(텍스트 · 소스/타깃 언어 · 옵션)은 Laravel 캐시에서 즉시 반환되어 API 호출과 비용을 줄입니다.
 배치 번역 시에는 **캐시 미스 항목만** 모아 한 번에 호출합니다.
 
