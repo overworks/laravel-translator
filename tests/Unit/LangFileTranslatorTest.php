@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Jobs\TranslateJob;
 use Minhyung\LaravelTranslator\Localization\LangFileTranslator;
+use Minhyung\LaravelTranslator\Support\Glossary;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
@@ -48,6 +49,31 @@ function bracketTranslator(): TranslatorContract
         public function languages(): array
         {
             return [];
+        }
+
+        public function createGlossary(string $name, string $sourceLang, string $targetLang, array $entries, array $options = []): Glossary
+        {
+            throw new BadMethodCallException('not used');
+        }
+
+        public function glossaries(): array
+        {
+            return [];
+        }
+
+        public function glossary(string $id): Glossary
+        {
+            throw new BadMethodCallException('not used');
+        }
+
+        public function glossaryEntries(string $id): array
+        {
+            return [];
+        }
+
+        public function deleteGlossary(string $id): void
+        {
+            throw new BadMethodCallException('not used');
         }
     };
 }

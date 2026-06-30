@@ -279,6 +279,50 @@ foreach (Translator::via('deepl')->languages() as $language) {
 }
 ```
 
+## Glossaries
+
+Glossaries (DeepL) and custom terminologies (Amazon Translate) are named sets of
+source → target term overrides. Drivers that can manage them — `deepl` and
+`amazon` — expose a single, unified API:
+
+```php
+use Minhyung\LaravelTranslator\Facades\Translator;
+
+// Create one from a source-term => target-term map.
+$glossary = Translator::via('deepl')->createGlossary(
+    name: 'product-terms',
+    sourceLang: 'en',
+    targetLang: 'ko',
+    entries: ['cookie' => '쿠키', 'cache' => '캐시'],
+);
+
+$glossary->id;          // provider identifier
+$glossary->entryCount;  // 2
+$glossary->targetLangs; // ['ko']  (Amazon terminologies may list several)
+$glossary->ready;       // usable for translation yet?
+
+Translator::via('deepl')->glossaries();              // list all
+Translator::via('deepl')->glossary($glossary->id);   // fetch one
+Translator::via('deepl')->glossaryEntries($id);      // ['cookie' => '쿠키', ...]
+Translator::via('deepl')->deleteGlossary($id);
+```
+
+Apply a glossary to a translation with the portable `glossary` option — it maps
+to DeepL's glossary id and to Amazon's `TerminologyNames`:
+
+```php
+Translator::via('deepl')->translate('Clear the cache', 'ko', 'en', [
+    'glossary' => $glossary->id,
+]);
+```
+
+Management flows through caching and retries like translation does. Calling these
+on a translator whose driver can't manage glossaries (e.g. `google`, `azure`,
+`openai`) throws a clear error.
+
+> Reading entries from `amazon` downloads the terminology file Amazon returns, so
+> that translator needs the HTTP client (wired automatically by the package).
+
 ## Command line
 
 Translate a string straight from the terminal:

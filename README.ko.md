@@ -274,6 +274,49 @@ foreach (Translator::via('deepl')->languages() as $language) {
 }
 ```
 
+## 용어집(Glossary)
+
+용어집(DeepL)과 커스텀 용어(Amazon Translate)는 소스 → 타깃 용어 치환을 모아둔
+이름 있는 집합입니다. 이를 관리할 수 있는 드라이버 — `deepl`, `amazon` — 는
+하나의 통일된 API를 제공합니다:
+
+```php
+use Minhyung\LaravelTranslator\Facades\Translator;
+
+// 소스 용어 => 타깃 용어 맵으로 생성.
+$glossary = Translator::via('deepl')->createGlossary(
+    name: 'product-terms',
+    sourceLang: 'en',
+    targetLang: 'ko',
+    entries: ['cookie' => '쿠키', 'cache' => '캐시'],
+);
+
+$glossary->id;          // 프로바이더 식별자
+$glossary->entryCount;  // 2
+$glossary->targetLangs; // ['ko']  (Amazon 용어는 여러 개일 수 있음)
+$glossary->ready;       // 번역에 사용 가능한 상태인가?
+
+Translator::via('deepl')->glossaries();              // 전체 목록
+Translator::via('deepl')->glossary($glossary->id);   // 단건 조회
+Translator::via('deepl')->glossaryEntries($id);      // ['cookie' => '쿠키', ...]
+Translator::via('deepl')->deleteGlossary($id);
+```
+
+번역에 용어집을 적용할 때는 통일된 `glossary` 옵션을 사용합니다 — DeepL의 glossary id,
+Amazon의 `TerminologyNames`로 각각 매핑됩니다:
+
+```php
+Translator::via('deepl')->translate('Clear the cache', 'ko', 'en', [
+    'glossary' => $glossary->id,
+]);
+```
+
+관리 작업도 번역과 마찬가지로 캐싱·재시도를 거칩니다. 용어집을 지원하지 않는
+드라이버(`google`, `azure`, `openai` 등)에 호출하면 명확한 예외를 던집니다.
+
+> `amazon`에서 항목을 읽으면 Amazon이 반환한 용어 파일을 내려받으므로 HTTP 클라이언트가
+> 필요합니다(패키지가 자동으로 주입합니다).
+
 ## 커맨드라인
 
 터미널에서 바로 번역할 수 있습니다:

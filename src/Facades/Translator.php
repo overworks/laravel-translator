@@ -19,6 +19,11 @@ use Minhyung\LaravelTranslator\TranslatorManager;
  * @method static \Minhyung\LaravelTranslator\Jobs\TranslateJob queueBatch(array $texts, string $targetLang, string|null $sourceLang = null, array $options = [])
  * @method static \Minhyung\LaravelTranslator\Support\LanguageDetection detect(string $text)
  * @method static array<int, \Minhyung\LaravelTranslator\Support\Language> languages()
+ * @method static \Minhyung\LaravelTranslator\Support\Glossary createGlossary(string $name, string $sourceLang, string $targetLang, array $entries, array $options = [])
+ * @method static array<int, \Minhyung\LaravelTranslator\Support\Glossary> glossaries()
+ * @method static \Minhyung\LaravelTranslator\Support\Glossary glossary(string $id)
+ * @method static array<string, string> glossaryEntries(string $id)
+ * @method static void deleteGlossary(string $id)
  *
  * @see \Minhyung\LaravelTranslator\TranslatorManager
  */

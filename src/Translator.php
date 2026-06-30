@@ -9,11 +9,13 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Contracts\ManagesGlossary;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Events\BatchTranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationFailed;
 use Minhyung\LaravelTranslator\Jobs\TranslateJob;
+use Minhyung\LaravelTranslator\Support\Glossary;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -155,6 +157,81 @@ final class Translator implements TranslatorContract
         }
 
         return $this->driver->languages();
+    }
+
+    /**
+     * Create a glossary (DeepL) / terminology (Amazon) from a source-term →
+     * target-term map. Reference it later via the "glossary" translate option.
+     *
+     * @param  array<string, string>  $entries  Source term => target term.
+     * @param  array<string, mixed>  $options
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function createGlossary(
+        string $name,
+        string $sourceLang,
+        string $targetLang,
+        array $entries,
+        array $options = []
+    ): Glossary {
+        return $this->glossaryDriver()->createGlossary($name, $sourceLang, $targetLang, $entries, $options);
+    }
+
+    /**
+     * List the glossaries registered with this translator.
+     *
+     * @return array<int, Glossary>
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossaries(): array
+    {
+        return $this->glossaryDriver()->glossaries();
+    }
+
+    /**
+     * Fetch a single glossary's metadata.
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossary(string $id): Glossary
+    {
+        return $this->glossaryDriver()->glossary($id);
+    }
+
+    /**
+     * Fetch a glossary's entries as a source-term → target-term map.
+     *
+     * @return array<string, string>
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossaryEntries(string $id): array
+    {
+        return $this->glossaryDriver()->glossaryEntries($id);
+    }
+
+    /**
+     * Delete a glossary.
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function deleteGlossary(string $id): void
+    {
+        $this->glossaryDriver()->deleteGlossary($id);
+    }
+
+    /**
+     * The driver as a glossary manager, or a clear error when unsupported.
+     */
+    protected function glossaryDriver(): ManagesGlossary
+    {
+        if (! $this->driver instanceof ManagesGlossary) {
+            throw new RuntimeException("The [{$this->name}] translator does not support glossaries.");
+        }
+
+        return $this->driver;
     }
 
     /**

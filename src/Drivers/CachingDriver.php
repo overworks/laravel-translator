@@ -8,6 +8,8 @@ use Illuminate\Contracts\Cache\Repository;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Contracts\ManagesGlossary;
+use Minhyung\LaravelTranslator\Support\Glossary;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -17,10 +19,11 @@ use RuntimeException;
  * a Laravel cache repository, avoiding repeated API calls (and billing) for
  * identical inputs.
  *
- * It also forwards {@see DetectsLanguage} and {@see ListsLanguages} transparently
- * so those capabilities keep working through the cache layer.
+ * It also forwards {@see DetectsLanguage}, {@see ListsLanguages} and
+ * {@see ManagesGlossary} transparently so those capabilities keep working
+ * through the cache layer.
  */
-class CachingDriver implements Driver, DetectsLanguage, ListsLanguages
+class CachingDriver implements Driver, DetectsLanguage, ListsLanguages, ManagesGlossary
 {
     /**
      * @param  Driver      $inner       The wrapped driver that performs real translations.
@@ -114,6 +117,45 @@ class CachingDriver implements Driver, DetectsLanguage, ListsLanguages
         }
 
         return $this->inner->languages();
+    }
+
+    public function createGlossary(
+        string $name,
+        string $sourceLang,
+        string $targetLang,
+        array $entries,
+        array $options = []
+    ): Glossary {
+        return $this->glossaryDriver()->createGlossary($name, $sourceLang, $targetLang, $entries, $options);
+    }
+
+    public function glossaries(): array
+    {
+        return $this->glossaryDriver()->glossaries();
+    }
+
+    public function glossary(string $id): Glossary
+    {
+        return $this->glossaryDriver()->glossary($id);
+    }
+
+    public function glossaryEntries(string $id): array
+    {
+        return $this->glossaryDriver()->glossaryEntries($id);
+    }
+
+    public function deleteGlossary(string $id): void
+    {
+        $this->glossaryDriver()->deleteGlossary($id);
+    }
+
+    protected function glossaryDriver(): ManagesGlossary
+    {
+        if (! $this->inner instanceof ManagesGlossary) {
+            throw new RuntimeException("The [{$this->translator}] translator does not support glossaries.");
+        }
+
+        return $this->inner;
     }
 
     protected function put(string $key, TranslationResult $result): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Contracts;
 
 use Minhyung\LaravelTranslator\Jobs\TranslateJob;
+use Minhyung\LaravelTranslator\Support\Glossary;
 use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -103,4 +104,52 @@ interface Translator
      * @throws RuntimeException  When the underlying driver cannot list languages.
      */
     public function languages(): array;
+
+    /**
+     * Create a glossary / terminology from a source-term → target-term map.
+     *
+     * @param  array<string, string>  $entries  Source term => target term.
+     * @param  array<string, mixed>  $options
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function createGlossary(
+        string $name,
+        string $sourceLang,
+        string $targetLang,
+        array $entries,
+        array $options = []
+    ): Glossary;
+
+    /**
+     * List the glossaries registered with this translator.
+     *
+     * @return array<int, Glossary>
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossaries(): array;
+
+    /**
+     * Fetch a single glossary's metadata.
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossary(string $id): Glossary;
+
+    /**
+     * Fetch a glossary's entries as a source-term → target-term map.
+     *
+     * @return array<string, string>
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function glossaryEntries(string $id): array;
+
+    /**
+     * Delete a glossary.
+     *
+     * @throws RuntimeException  When the underlying driver cannot manage glossaries.
+     */
+    public function deleteGlossary(string $id): void;
 }

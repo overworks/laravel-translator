@@ -8,6 +8,8 @@ use Closure;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Contracts\ManagesGlossary;
+use Minhyung\LaravelTranslator\Support\Glossary;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -18,10 +20,11 @@ use Throwable;
  * backoff between attempts. Useful for shrugging off transient provider errors
  * (timeouts, 429/5xx) without falling all the way over to another translator.
  *
- * Forwards {@see DetectsLanguage} and {@see ListsLanguages} transparently so
- * those keep working (and are retried) through the retry layer.
+ * Forwards {@see DetectsLanguage}, {@see ListsLanguages} and
+ * {@see ManagesGlossary} transparently so those keep working (and are retried)
+ * through the retry layer.
  */
-class RetryingDriver implements Driver, DetectsLanguage, ListsLanguages
+class RetryingDriver implements Driver, DetectsLanguage, ListsLanguages, ManagesGlossary
 {
     /**
      * @param  Driver  $inner    The wrapped driver.
@@ -73,6 +76,59 @@ class RetryingDriver implements Driver, DetectsLanguage, ListsLanguages
         }
 
         return $this->attempt(fn (): array => $this->inner->languages());
+    }
+
+    public function createGlossary(
+        string $name,
+        string $sourceLang,
+        string $targetLang,
+        array $entries,
+        array $options = []
+    ): Glossary {
+        $driver = $this->glossaryDriver();
+
+        return $this->attempt(
+            fn (): Glossary => $driver->createGlossary($name, $sourceLang, $targetLang, $entries, $options)
+        );
+    }
+
+    public function glossaries(): array
+    {
+        $driver = $this->glossaryDriver();
+
+        return $this->attempt(fn (): array => $driver->glossaries());
+    }
+
+    public function glossary(string $id): Glossary
+    {
+        $driver = $this->glossaryDriver();
+
+        return $this->attempt(fn (): Glossary => $driver->glossary($id));
+    }
+
+    public function glossaryEntries(string $id): array
+    {
+        $driver = $this->glossaryDriver();
+
+        return $this->attempt(fn (): array => $driver->glossaryEntries($id));
+    }
+
+    public function deleteGlossary(string $id): void
+    {
+        $driver = $this->glossaryDriver();
+
+        $this->attempt(function () use ($driver): void {
+            $driver->deleteGlossary($id);
+        });
+    }
+
+    protected function glossaryDriver(): ManagesGlossary
+    {
+        if (! $this->inner instanceof ManagesGlossary) {
+            throw new RuntimeException('The wrapped driver does not support glossaries.');
+        }
+
+        return $this->inner;
     }
 
     /**

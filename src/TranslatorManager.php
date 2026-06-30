@@ -343,7 +343,11 @@ class TranslatorManager
             ], fn ($value): bool => $value !== null);
         }
 
-        return new AmazonTranslateDriver(new TranslateClient($args), $name);
+        return new AmazonTranslateDriver(
+            new TranslateClient($args),
+            $name,
+            $this->container->make(HttpFactory::class),
+        );
     }
 
     /**
