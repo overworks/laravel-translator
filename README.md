@@ -202,6 +202,26 @@ Translator::translate('Hello', 'ko'); // if deepl fails, try claude
 - Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching), and every fallback attempt is logged at `warning` level via a PSR logger.
 - If every translator fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per translator.
 
+## Events
+
+The package dispatches lifecycle events you can listen for:
+
+| Event | When |
+| --- | --- |
+| `Events\TranslationCompleted` | a single `translate()` succeeded (`->translator`, `->text`, `->result`, `->sourceLang`, `->options`) |
+| `Events\BatchTranslationCompleted` | a `translateBatch()` succeeded (`->translator`, `->texts`, `->results`, `->targetLang`, ...) |
+| `Events\TranslationFailed` | a request ultimately failed (`->translator`, `->exception`, `->texts`, ...) |
+| `Events\TranslationFellBack` | a `fallback` child threw and the chain moved on (`->translator`, `->exception`) |
+
+```php
+use Illuminate\Support\Facades\Event;
+use Minhyung\LaravelTranslator\Events\TranslationCompleted;
+
+Event::listen(function (TranslationCompleted $event) {
+    logger()->info("Translated via {$event->translator}: {$event->result->text}");
+});
+```
+
 ## Architecture
 
 There are two layers:

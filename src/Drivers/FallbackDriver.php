@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Closure;
+use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Events\TranslationFellBack;
 use Minhyung\LaravelTranslator\Exceptions\AllTranslationDriversFailedException;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Psr\Log\LoggerInterface;
@@ -34,6 +36,7 @@ class FallbackDriver implements Driver
     public function __construct(
         protected array $factories,
         protected ?LoggerInterface $logger = null,
+        protected ?Dispatcher $events = null,
     ) {
     }
 
@@ -84,6 +87,8 @@ class FallbackDriver implements Driver
                     "Translation driver [{$name}] failed, falling back.",
                     ['exception' => $e]
                 );
+
+                $this->events?->dispatch(new TranslationFellBack($name, $e));
             }
         }
 

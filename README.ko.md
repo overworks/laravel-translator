@@ -197,6 +197,26 @@ Translator::translate('Hello', 'ko'); // deepl 실패 시 claude 시도
 - 각 자식 translator는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
 - 모든 translator가 실패하면 `AllTranslationDriversFailedException`이 발생하고, `getErrors()`로 translator별 원인 예외를 얻을 수 있습니다.
 
+## 이벤트
+
+라이프사이클 이벤트를 디스패치하므로 리스닝할 수 있습니다:
+
+| 이벤트 | 시점 |
+| --- | --- |
+| `Events\TranslationCompleted` | 단건 `translate()` 성공 (`->translator`, `->text`, `->result`, `->sourceLang`, `->options`) |
+| `Events\BatchTranslationCompleted` | `translateBatch()` 성공 (`->translator`, `->texts`, `->results`, `->targetLang`, ...) |
+| `Events\TranslationFailed` | 요청 최종 실패 (`->translator`, `->exception`, `->texts`, ...) |
+| `Events\TranslationFellBack` | `fallback` 자식이 예외를 던져 다음으로 넘어감 (`->translator`, `->exception`) |
+
+```php
+use Illuminate\Support\Facades\Event;
+use Minhyung\LaravelTranslator\Events\TranslationCompleted;
+
+Event::listen(function (TranslationCompleted $event) {
+    logger()->info("{$event->translator}로 번역: {$event->result->text}");
+});
+```
+
 ## 구조
 
 두 계층으로 나뉩니다:

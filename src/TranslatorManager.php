@@ -10,6 +10,7 @@ use DeepL\DeepLClient;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -71,7 +72,11 @@ class TranslatorManager
     {
         $name ??= $this->getDefaultTranslator();
 
-        return $this->translators[$name] ??= new Translator($name, $this->resolveDriver($name));
+        return $this->translators[$name] ??= new Translator(
+            $name,
+            $this->resolveDriver($name),
+            $this->container->make(Dispatcher::class),
+        );
     }
 
     /**
@@ -249,7 +254,11 @@ class TranslatorManager
             $factories[$child] = fn (): Driver => $this->resolveDriver($child);
         }
 
-        return new FallbackDriver($factories, $this->container->make(LoggerInterface::class));
+        return new FallbackDriver(
+            $factories,
+            $this->container->make(LoggerInterface::class),
+            $this->container->make(Dispatcher::class),
+        );
     }
 
     protected function wrapWithCache(string $name, Driver $driver): Driver

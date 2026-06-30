@@ -4,22 +4,29 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Events\BatchTranslationCompleted;
+use Minhyung\LaravelTranslator\Events\TranslationCompleted;
+use Minhyung\LaravelTranslator\Events\TranslationFailed;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
+use Throwable;
 
 /**
  * The public translator object returned by the manager.
  *
  * It wraps a {@see Driver} (the swappable provider implementation) and delegates
- * to it. Keeping this separate from the driver gives a stable public type and a
- * place to grow translator-level conveniences without touching every driver.
+ * to it. Keeping this separate from the driver gives a stable public type, the
+ * place lifecycle events are dispatched, and room to grow translator-level
+ * conveniences without touching every driver.
  */
 final class Translator implements TranslatorContract
 {
     public function __construct(
         protected string $name,
         protected Driver $driver,
+        protected ?Dispatcher $events = null,
     ) {
     }
 
@@ -45,7 +52,21 @@ final class Translator implements TranslatorContract
         ?string $sourceLang = null,
         array $options = []
     ): TranslationResult {
-        return $this->driver->translate($text, $targetLang, $sourceLang, $options);
+        try {
+            $result = $this->driver->translate($text, $targetLang, $sourceLang, $options);
+        } catch (Throwable $e) {
+            $this->events?->dispatch(
+                new TranslationFailed($this->name, $e, [$text], $targetLang, $sourceLang, $options)
+            );
+
+            throw $e;
+        }
+
+        $this->events?->dispatch(
+            new TranslationCompleted($this->name, $text, $result, $sourceLang, $options)
+        );
+
+        return $result;
     }
 
     public function translateBatch(
@@ -54,6 +75,20 @@ final class Translator implements TranslatorContract
         ?string $sourceLang = null,
         array $options = []
     ): array {
-        return $this->driver->translateBatch($texts, $targetLang, $sourceLang, $options);
+        try {
+            $results = $this->driver->translateBatch($texts, $targetLang, $sourceLang, $options);
+        } catch (Throwable $e) {
+            $this->events?->dispatch(
+                new TranslationFailed($this->name, $e, $texts, $targetLang, $sourceLang, $options)
+            );
+
+            throw $e;
+        }
+
+        $this->events?->dispatch(
+            new BatchTranslationCompleted($this->name, $texts, $results, $targetLang, $sourceLang, $options)
+        );
+
+        return $results;
     }
 }
