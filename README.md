@@ -330,6 +330,30 @@ app(TranslatorManager::class)->extend('papago', function ($container, $name, $co
 
 ## Testing
 
+In your application's tests, call `Translator::fake()` so no real provider is hit. It records every translation and returns canned results — by default it echoes the source text; pass a map or a closure to control the output:
+
+```php
+use Minhyung\LaravelTranslator\Facades\Translator;
+
+$fake = Translator::fake([
+    'Hello' => '안녕하세요',           // map source => translation (unknown texts echo)
+]);
+// or: Translator::fake(fn (string $text, string $target) => "[$target] $text");
+
+// ... exercise code that translates ...
+
+$fake->assertTranslated('Hello');
+$fake->assertTranslated('Hello', fn (array $r) => $r['target'] === 'ko'); // match a predicate
+$fake->assertTranslatedTimes('Hello', 1);
+$fake->assertNotTranslated('Goodbye');
+$fake->assertNothingTranslated();
+$fake->assertTranslatedCount(1);
+```
+
+`Translator::fake()` swaps the manager in the container, so the facade, `Translator::via()`/`build()`, and an injected `Contracts\Translator` all record through the fake.
+
+### Contributing
+
 ```bash
 composer install
 vendor/bin/pest

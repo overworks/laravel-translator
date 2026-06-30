@@ -6,6 +6,7 @@ namespace Minhyung\LaravelTranslator\Facades;
 
 use Illuminate\Support\Facades\Facade;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
+use Minhyung\LaravelTranslator\Testing\TranslatorFake;
 use Minhyung\LaravelTranslator\TranslatorManager;
 
 /**
@@ -18,6 +19,19 @@ use Minhyung\LaravelTranslator\TranslatorManager;
  */
 class Translator extends Facade
 {
+    /**
+     * Replace the translator with a fake that records translations instead of
+     * calling real providers, and returns it for assertions.
+     *
+     * @param  array<string, string>|callable|null  $resolver  Map of source => translation, or a callback.
+     */
+    public static function fake(array|callable|null $resolver = null): TranslatorFake
+    {
+        static::swap($fake = new TranslatorFake(static::getFacadeApplication(), $resolver));
+
+        return $fake;
+    }
+
     protected static function getFacadeAccessor(): string
     {
         return TranslatorManager::class;

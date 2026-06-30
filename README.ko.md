@@ -325,6 +325,30 @@ app(TranslatorManager::class)->extend('papago', function ($container, $name, $co
 
 ## 테스트
 
+앱 테스트에서 `Translator::fake()`를 호출하면 실제 프로바이더를 호출하지 않습니다. 모든 번역을 기록하고 정해진 결과를 반환하며, 기본은 소스 텍스트를 그대로 echo합니다. 맵이나 클로저로 출력을 제어할 수 있습니다:
+
+```php
+use Minhyung\LaravelTranslator\Facades\Translator;
+
+$fake = Translator::fake([
+    'Hello' => '안녕하세요',           // source => translation 맵 (없는 텍스트는 echo)
+]);
+// 또는: Translator::fake(fn (string $text, string $target) => "[$target] $text");
+
+// ... 번역하는 코드 실행 ...
+
+$fake->assertTranslated('Hello');
+$fake->assertTranslated('Hello', fn (array $r) => $r['target'] === 'ko'); // 조건 매칭
+$fake->assertTranslatedTimes('Hello', 1);
+$fake->assertNotTranslated('Goodbye');
+$fake->assertNothingTranslated();
+$fake->assertTranslatedCount(1);
+```
+
+`Translator::fake()`는 컨테이너의 매니저를 교체하므로, 파사드·`Translator::via()`/`build()`·주입된 `Contracts\Translator` 모두 fake를 통해 기록됩니다.
+
+### 기여
+
 ```bash
 composer install
 vendor/bin/pest
