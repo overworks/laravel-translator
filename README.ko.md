@@ -43,6 +43,9 @@ GOOGLE_TRANSLATE_KEY=AIza...
 TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
 TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
 TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
+TRANSLATOR_DEEPSEEK_MODEL=deepseek-chat
+TRANSLATOR_OPENROUTER_MODEL=openai/gpt-4o-mini
+TRANSLATOR_OLLAMA_MODEL=llama3.2
 
 # 캐싱
 TRANSLATOR_CACHE=true
@@ -62,12 +65,15 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```php
 // config/translator.php
 'drivers' => [
-    'openai'    => ['model' => 'gpt-4o-mini'],
-    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'    => ['model' => 'gemini-2.0-flash'],
+    'openai'     => ['model' => 'gpt-4o-mini'],
+    'anthropic'  => ['model' => 'claude-3-5-sonnet-latest'],
+    'gemini'     => ['model' => 'gemini-2.0-flash'],
+    'deepseek'   => ['model' => 'deepseek-chat'],
+    'openrouter' => ['model' => 'openai/gpt-4o-mini'],
+    'ollama'     => ['model' => 'llama3.2'],
 
     // 키를 별칭으로 쓰고 싶으면 'provider'로 실제 Prism 프로바이더를 지정
-    'claude'    => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'claude'     => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
 ],
 ```
 

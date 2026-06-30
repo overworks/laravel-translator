@@ -62,6 +62,19 @@ return [
             'model' => env('TRANSLATOR_GEMINI_MODEL', 'gemini-2.0-flash'),
         ],
 
+        'deepseek' => [
+            'model' => env('TRANSLATOR_DEEPSEEK_MODEL', 'deepseek-chat'),
+        ],
+
+        'openrouter' => [
+            'model' => env('TRANSLATOR_OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
+        ],
+
+        // Self-hosted models via Ollama.
+        'ollama' => [
+            'model' => env('TRANSLATOR_OLLAMA_MODEL', 'llama3.2'),
+        ],
+
         // Failover: try each driver in order, falling back to the next one
         // whenever a driver throws. Set 'default' => 'fallback' to use it.
         'fallback' => [

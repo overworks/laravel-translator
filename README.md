@@ -48,6 +48,9 @@ GOOGLE_TRANSLATE_KEY=AIza...
 TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
 TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
 TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
+TRANSLATOR_DEEPSEEK_MODEL=deepseek-chat
+TRANSLATOR_OPENROUTER_MODEL=openai/gpt-4o-mini
+TRANSLATOR_OLLAMA_MODEL=llama3.2
 
 # Caching
 TRANSLATOR_CACHE=true
@@ -67,12 +70,15 @@ This is handy for registering several LLM providers and dropping them into a fai
 ```php
 // config/translator.php
 'drivers' => [
-    'openai'    => ['model' => 'gpt-4o-mini'],
-    'anthropic' => ['model' => 'claude-3-5-sonnet-latest'],
-    'gemini'    => ['model' => 'gemini-2.0-flash'],
+    'openai'     => ['model' => 'gpt-4o-mini'],
+    'anthropic'  => ['model' => 'claude-3-5-sonnet-latest'],
+    'gemini'     => ['model' => 'gemini-2.0-flash'],
+    'deepseek'   => ['model' => 'deepseek-chat'],
+    'openrouter' => ['model' => 'openai/gpt-4o-mini'],
+    'ollama'     => ['model' => 'llama3.2'],
 
     // Use the key as an alias by pointing 'provider' at the real Prism provider
-    'claude'    => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
+    'claude'     => ['provider' => 'anthropic', 'model' => 'claude-3-5-sonnet-latest'],
 ],
 ```
 
