@@ -64,8 +64,6 @@ TRANSLATOR_CACHE_STORE=          # 비우면 기본 스토어 사용
 TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ```
 
-> 배치 번역은 모델에 JSON 객체를 요청해 입력 개수와 순서를 보장하며, 개수가 맞지 않으면 예외를 던집니다.
-
 ### translator 정의
 
 `translators` 아래 각 항목은 `driver` 키로 구현을 고르는, 이름 붙인 인스턴스입니다.
@@ -118,7 +116,7 @@ use Minhyung\LaravelTranslator\Facades\Translator;
 
 $result = Translator::translate('Hello, world!', 'ko');
 
-$result->text;               // "안녕하세요, 여러분!"
+$result->text;               // "안녕하세요, 세상!"
 $result->detectedSourceLang; // "en"
 $result->translator;         // "deepl"
 (string) $result;            // 번역문 (Stringable)
@@ -142,6 +140,8 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
+> LLM 드라이버(`claude`, `openai`)는 배치 번역 시 입력당 하나의 결과를 순서대로 담은 JSON 객체를 모델에 요청하며, 개수가 맞지 않으면 예외를 던집니다. `deepl`·`google`은 배치를 네이티브로 처리합니다.
+
 ### translator 선택
 
 ```php
@@ -156,7 +156,7 @@ Translator::via('openai')->translate('Hello', 'ko', 'en', [
 
 ### 의존성 주입
 
-`Translator` 계약(contract)은 기본 translator로 바인딩되어 있습니다.
+`Contracts\Translator` 계약(contract)은 기본 translator로 바인딩되어 있습니다.
 
 ```php
 use Minhyung\LaravelTranslator\Contracts\Translator;
@@ -194,7 +194,7 @@ public function __construct(private Translator $translator) {}
 Translator::translate('Hello', 'ko'); // deepl 실패 시 claude 시도
 ```
 
-- 각 자식 translator는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
+- 각 자식 translator는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅되고 `TranslationFellBack` 이벤트를 디스패치합니다.
 - 모든 translator가 실패하면 `AllTranslationDriversFailedException`이 발생하고, `getErrors()`로 translator별 원인 예외를 얻을 수 있습니다.
 
 ## 이벤트

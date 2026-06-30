@@ -69,8 +69,6 @@ TRANSLATOR_CACHE_STORE=          # empty = the application's default store
 TRANSLATOR_CACHE_TTL=86400       # seconds; empty = cache forever
 ```
 
-> Batch translation asks the model for a JSON object with one in-order result per input, and throws if the counts don't match.
-
 ### Defining translators
 
 Each entry under `translators` is a named instance whose `driver` picks the implementation.
@@ -123,7 +121,7 @@ use Minhyung\LaravelTranslator\Facades\Translator;
 
 $result = Translator::translate('Hello, world!', 'ko');
 
-$result->text;               // "안녕하세요, 여러분!"
+$result->text;               // "안녕하세요, 세상!"
 $result->detectedSourceLang; // "en"
 $result->translator;         // "deepl"
 (string) $result;            // the translated text (Stringable)
@@ -147,6 +145,8 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
+> For LLM drivers (`claude`, `openai`), batch translation requests a single JSON object with one in-order result per input and throws if the counts don't match. `deepl` and `google` translate batches natively.
+
 ### Selecting a translator
 
 ```php
@@ -161,7 +161,7 @@ Translator::via('openai')->translate('Hello', 'ko', 'en', [
 
 ### Dependency injection
 
-The `Translator` contract is bound to the default translator.
+The `Contracts\Translator` contract is bound to the default translator.
 
 ```php
 use Minhyung\LaravelTranslator\Contracts\Translator;
@@ -199,7 +199,7 @@ It tries each listed translator in order and moves on to the next whenever one t
 Translator::translate('Hello', 'ko'); // if deepl fails, try claude
 ```
 
-- Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching), and every fallback attempt is logged at `warning` level via a PSR logger.
+- Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching). Every fallback attempt is logged at `warning` level via a PSR logger and dispatches a `TranslationFellBack` event.
 - If every translator fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per translator.
 
 ## Events
