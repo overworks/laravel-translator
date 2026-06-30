@@ -6,13 +6,13 @@ namespace Minhyung\LaravelTranslator\Drivers;
 
 use DeepL\DeepLClient;
 use DeepL\TextResult;
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
  * DeepL driver backed by the official deeplcom/deepl-php client.
  */
-class DeeplDriver implements Translator
+class DeeplDriver implements Driver
 {
     public function __construct(
         protected DeepLClient $client,

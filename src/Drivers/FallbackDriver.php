@@ -5,31 +5,31 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Closure;
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Exceptions\AllTranslationDriversFailedException;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Tries an ordered list of translators, falling back to the next one whenever
- * one throws, so a single provider outage doesn't break translation.
+ * Tries an ordered list of drivers, falling back to the next one whenever one
+ * throws, so a single provider outage doesn't break translation.
  *
- * Translators are passed as lazy factories and resolved only when reached, so a
+ * Drivers are passed as lazy factories and resolved only when reached, so a
  * later one that fails to even construct (e.g. missing credentials) never
- * prevents an earlier, healthy translator from running.
+ * prevents an earlier, healthy driver from running.
  */
-class FallbackDriver implements Translator
+class FallbackDriver implements Driver
 {
     /**
-     * Successfully constructed translators, memoized by name.
+     * Successfully constructed drivers, memoized by name.
      *
-     * @var array<string, Translator>
+     * @var array<string, Driver>
      */
     protected array $resolved = [];
 
     /**
-     * @param  array<string, callable(): Translator>  $factories  Ordered, keyed by translator name.
+     * @param  array<string, callable(): Driver>  $factories  Ordered, keyed by translator name.
      */
     public function __construct(
         protected array $factories,
@@ -44,7 +44,7 @@ class FallbackDriver implements Translator
         array $options = []
     ): TranslationResult {
         return $this->attempt(
-            fn (Translator $driver): TranslationResult => $driver->translate($text, $targetLang, $sourceLang, $options)
+            fn (Driver $driver): TranslationResult => $driver->translate($text, $targetLang, $sourceLang, $options)
         );
     }
 
@@ -55,14 +55,14 @@ class FallbackDriver implements Translator
         array $options = []
     ): array {
         return $this->attempt(
-            fn (Translator $driver): array => $driver->translateBatch($texts, $targetLang, $sourceLang, $options)
+            fn (Driver $driver): array => $driver->translateBatch($texts, $targetLang, $sourceLang, $options)
         );
     }
 
     /**
      * Run $call against each driver in turn, returning the first success.
      *
-     * @param  Closure(Translator): mixed  $call
+     * @param  Closure(Driver): mixed  $call
      *
      * @throws AllTranslationDriversFailedException  When every driver fails.
      */

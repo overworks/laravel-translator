@@ -7,11 +7,14 @@ namespace Minhyung\LaravelTranslator\Contracts;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
- * Public translator contract — the type the manager returns and that is bound
- * for dependency injection. The concrete {@see \Minhyung\LaravelTranslator\Translator}
- * implements this by delegating to a {@see Driver}.
+ * Low-level contract implemented by every translation driver (provider
+ * adapters such as DeepL/OpenAI/Claude/Google, and composite drivers such as
+ * caching and fallback).
+ *
+ * A {@see Translator} is the public object that wraps a driver and is what the
+ * manager hands back; drivers are the swappable implementation behind it.
  */
-interface Translator
+interface Driver
 {
     /**
      * Translate a single piece of text.

@@ -5,25 +5,25 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Illuminate\Contracts\Cache\Repository;
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
- * Decorator that caches translation results from any inner translator using a
- * Laravel cache repository, avoiding repeated API calls (and billing) for
+ * Decorator driver that caches translation results from any inner driver using
+ * a Laravel cache repository, avoiding repeated API calls (and billing) for
  * identical inputs.
  */
-class CachingTranslator implements Translator
+class CachingDriver implements Driver
 {
     /**
-     * @param  Translator  $inner       The wrapped translator that performs real translations.
+     * @param  Driver      $inner       The wrapped driver that performs real translations.
      * @param  Repository  $cache       Laravel cache repository to store results in.
-     * @param  string      $translator  Name of the inner translator (used in cache keys).
+     * @param  string      $translator  Name of the translator (used in cache keys).
      * @param  int|null    $ttl         Cache lifetime in seconds, or null to cache forever.
      * @param  string      $prefix      Cache key prefix.
      */
     public function __construct(
-        protected Translator $inner,
+        protected Driver $inner,
         protected Repository $cache,
         protected string $translator,
         protected ?int $ttl = null,

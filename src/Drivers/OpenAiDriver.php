@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Drivers;
 
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use OpenAI\Contracts\ClientContract;
 use RuntimeException;
@@ -20,7 +20,7 @@ use RuntimeException;
  * Single translations use a plain chat completion; batch translations request a
  * JSON object so every input maps to exactly one output, in order.
  */
-class OpenAiDriver implements Translator
+class OpenAiDriver implements Driver
 {
     /**
      * @param  ClientContract  $client  Configured with the endpoint's base URI and key.

@@ -197,15 +197,24 @@ Translator::translate('Hello', 'ko'); // deepl 실패 시 claude 시도
 - 각 자식 translator는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅됩니다.
 - 모든 translator가 실패하면 `AllTranslationDriversFailedException`이 발생하고, `getErrors()`로 translator별 원인 예외를 얻을 수 있습니다.
 
+## 구조
+
+두 계층으로 나뉩니다:
+
+- **`Contracts\Driver`** — 저수준 프로바이더 계약. 각 프로바이더가 이를 구현하는 어댑터(`DeeplDriver`, `OpenAiDriver`, ...)이고, 합성 드라이버 `CachingDriver`·`FallbackDriver`도 이를 구현합니다.
+- **`Translator`** (`Contracts\Translator` 구현) — 매니저의 `via()`가 돌려주고 DI에 바인딩되는 공개 객체. `Driver`를 감싸 위임하며 `->driver()`, `->name()`을 제공합니다.
+
+즉 `Translator::via('claude')`는 (캐시로 감싼) `ClaudeDriver`를 감싼 `Translator`를 반환합니다.
+
 ## 커스텀 driver 확장
 
-`Contracts\Translator`를 구현하고 매니저에 driver를 등록합니다. 콜백은 `($container, $name, $config)`를 받고, config에서 `'driver' => 'papago'`로 참조합니다.
+`Contracts\Driver`를 구현하고 매니저에 등록합니다. 콜백은 `($container, $name, $config)`를 받아 `Driver`를 반환하며, config에서 `'driver' => 'papago'`로 참조합니다.
 
 ```php
 use Minhyung\LaravelTranslator\TranslatorManager;
 
 app(TranslatorManager::class)->extend('papago', function ($container, $name, $config) {
-    return new \App\Translation\PapagoTranslator($config['key'], $name);
+    return new \App\Translation\PapagoDriver($config['key'], $name); // Contracts\Driver 구현
 });
 ```
 

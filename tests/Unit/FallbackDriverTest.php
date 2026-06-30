@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
 use Minhyung\LaravelTranslator\Exceptions\AllTranslationDriversFailedException;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -10,9 +10,9 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
 /**
  * A driver that always throws, recording whether it was called.
  */
-function failingDriver(string $message = 'boom'): Translator
+function failingDriver(string $message = 'boom'): Driver
 {
-    return new class($message) implements Translator {
+    return new class($message) implements Driver {
         public int $calls = 0;
 
         public function __construct(private string $message)
@@ -36,9 +36,9 @@ function failingDriver(string $message = 'boom'): Translator
 /**
  * A driver that succeeds, tagging results with the given driver name.
  */
-function succeedingDriver(string $name): Translator
+function succeedingDriver(string $name): Driver
 {
-    return new class($name) implements Translator {
+    return new class($name) implements Driver {
         public int $calls = 0;
 
         public function __construct(private string $name)

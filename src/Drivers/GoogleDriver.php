@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -14,7 +14,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * Uses the simple REST endpoint authenticated with an API key, so no
  * service-account credentials or gRPC are required.
  */
-class GoogleDriver implements Translator
+class GoogleDriver implements Driver
 {
     public function __construct(
         protected HttpFactory $http,

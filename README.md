@@ -202,15 +202,24 @@ Translator::translate('Hello', 'ko'); // if deepl fails, try claude
 - Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching), and every fallback attempt is logged at `warning` level via a PSR logger.
 - If every translator fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per translator.
 
+## Architecture
+
+There are two layers:
+
+- **`Contracts\Driver`** — the low-level provider contract. Each provider is an adapter implementing it (`DeeplDriver`, `OpenAiDriver`, ...), as are the composite `CachingDriver` and `FallbackDriver`.
+- **`Translator`** (implements **`Contracts\Translator`**) — the public object the manager hands back from `via()` and binds for injection. It wraps a `Driver` and delegates to it, exposing `->driver()` and `->name()`.
+
+So `Translator::via('claude')` returns a `Translator` wrapping a (cache-wrapped) `ClaudeDriver`.
+
 ## Extending with a custom driver
 
-Implement `Contracts\Translator` and register the driver on the manager. The callback receives `($container, $name, $config)`; reference it from config with `'driver' => 'papago'`.
+Implement `Contracts\Driver` and register it on the manager. The callback receives `($container, $name, $config)` and returns a `Driver`; reference it from config with `'driver' => 'papago'`.
 
 ```php
 use Minhyung\LaravelTranslator\TranslatorManager;
 
 app(TranslatorManager::class)->extend('papago', function ($container, $name, $config) {
-    return new \App\Translation\PapagoTranslator($config['key'], $name);
+    return new \App\Translation\PapagoDriver($config['key'], $name); // implements Contracts\Driver
 });
 ```
 

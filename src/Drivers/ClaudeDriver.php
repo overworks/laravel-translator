@@ -6,7 +6,7 @@ namespace Minhyung\LaravelTranslator\Drivers;
 
 use Anthropic\Contracts\ClientContract;
 use Anthropic\Responses\Messages\CreateResponse;
-use Minhyung\LaravelTranslator\Contracts\Translator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
 
@@ -18,7 +18,7 @@ use RuntimeException;
  * model to return a JSON object so every input maps to exactly one output,
  * in order (the Messages API has no native JSON mode).
  */
-class ClaudeDriver implements Translator
+class ClaudeDriver implements Driver
 {
     /**
      * Default token ceiling for a response when none is given in options.

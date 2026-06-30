@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
+use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
-use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
+use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
@@ -17,16 +18,19 @@ beforeEach(function () {
     config()->set('translator.translators.deepl', ['driver' => 'deepl', 'key' => 'test-key:fx']);
 });
 
-it('resolves the default translator wrapped in caching when enabled', function () {
+it('returns a Translator wrapping a cache-wrapped driver when caching is enabled', function () {
     config()->set('translator.cache.enabled', true);
 
-    expect(app(TranslatorManager::class)->via())->toBeInstanceOf(CachingTranslator::class);
+    $translator = app(TranslatorManager::class)->via();
+
+    expect($translator)->toBeInstanceOf(TranslatorContract::class)
+        ->and($translator->driver())->toBeInstanceOf(CachingDriver::class);
 });
 
-it('returns the bare translator when caching is disabled', function () {
+it('wraps the bare driver when caching is disabled', function () {
     config()->set('translator.cache.enabled', false);
 
-    expect(app(TranslatorManager::class)->via())->toBeInstanceOf(DeeplDriver::class);
+    expect(app(TranslatorManager::class)->via()->driver())->toBeInstanceOf(DeeplDriver::class);
 });
 
 it('throws a helpful error when the DeepL key is missing', function () {
@@ -55,59 +59,60 @@ it('throws for an unsupported driver', function () {
         ->toThrow(InvalidArgumentException::class);
 });
 
-it('resolves the facade to the manager', function () {
+it('resolves the facade to a translator', function () {
     config()->set('translator.cache.enabled', false);
 
-    expect(Translator::via())->toBeInstanceOf(DeeplDriver::class);
+    expect(Translator::via())->toBeInstanceOf(TranslatorContract::class)
+        ->and(Translator::via()->driver())->toBeInstanceOf(DeeplDriver::class);
 });
 
 it('does not clobber Laravel\'s own translator binding', function () {
     expect(app('translator'))->toBeInstanceOf(\Illuminate\Translation\Translator::class);
 });
 
-it('resolves the native Claude translator', function () {
+it('resolves the native Claude driver', function () {
     config()->set('translator.cache.enabled', false);
     config()->set('translator.translators.claude', [
         'driver' => 'claude',
         'key' => 'sk-ant-test',
-        'model' => 'claude-3-5-sonnet-latest',
+        'model' => 'claude-haiku-4-5',
     ]);
 
-    expect(app(TranslatorManager::class)->via('claude'))->toBeInstanceOf(ClaudeDriver::class);
+    expect(app(TranslatorManager::class)->via('claude')->driver())->toBeInstanceOf(ClaudeDriver::class);
 });
 
 it('throws when the Claude key is missing', function () {
     config()->set('translator.translators.claude', [
         'driver' => 'claude',
         'key' => null,
-        'model' => 'claude-3-5-sonnet-latest',
+        'model' => 'claude-haiku-4-5',
     ]);
 
     expect(fn () => app(TranslatorManager::class)->via('claude'))
         ->toThrow(InvalidArgumentException::class);
 });
 
-it('resolves the OpenAI translator', function () {
+it('resolves the OpenAI driver', function () {
     config()->set('translator.cache.enabled', false);
     config()->set('translator.translators.openai', [
         'driver' => 'openai',
         'key' => 'sk-test',
-        'model' => 'gpt-4o-mini',
+        'model' => 'gpt-5.4-mini',
     ]);
 
-    expect(app(TranslatorManager::class)->via('openai'))->toBeInstanceOf(OpenAiDriver::class);
+    expect(app(TranslatorManager::class)->via('openai')->driver())->toBeInstanceOf(OpenAiDriver::class);
 });
 
-it('resolves an OpenAI-compatible translator via base_url', function () {
+it('resolves an OpenAI-compatible driver via base_url', function () {
     config()->set('translator.cache.enabled', false);
     config()->set('translator.translators.deepseek', [
         'driver' => 'openai',
         'base_url' => 'https://api.deepseek.com/v1',
         'key' => 'sk-test',
-        'model' => 'deepseek-chat',
+        'model' => 'deepseek-v4-flash',
     ]);
 
-    expect(app(TranslatorManager::class)->via('deepseek'))->toBeInstanceOf(OpenAiDriver::class);
+    expect(app(TranslatorManager::class)->via('deepseek')->driver())->toBeInstanceOf(OpenAiDriver::class);
 });
 
 it('throws when the OpenAI driver has no model', function () {
@@ -121,12 +126,12 @@ it('resolves a custom driver registered via extend', function () {
     config()->set('translator.cache.enabled', false);
     config()->set('translator.translators.papago', ['driver' => 'papago']);
 
-    app(TranslatorManager::class)->extend('papago', fn () => stubTranslator('papago'));
+    app(TranslatorManager::class)->extend('papago', fn () => stubDriver('papago'));
 
-    expect(app(TranslatorManager::class)->via('papago'))
-        ->toBeInstanceOf(TranslatorContract::class)
-        ->and(app(TranslatorManager::class)->via('papago')->translate('Hello', 'ko')->translator)
-        ->toBe('papago');
+    $translator = app(TranslatorManager::class)->via('papago');
+
+    expect($translator)->toBeInstanceOf(TranslatorContract::class)
+        ->and($translator->translate('Hello', 'ko')->translator)->toBe('papago');
 });
 
 it('forwards facade calls to the default translator', function () {
@@ -134,12 +139,12 @@ it('forwards facade calls to the default translator', function () {
     config()->set('translator.default', 'stub');
     config()->set('translator.translators.stub', ['driver' => 'stub']);
 
-    app(TranslatorManager::class)->extend('stub', fn () => stubTranslator('stub', '안녕하세요'));
+    app(TranslatorManager::class)->extend('stub', fn () => stubDriver('stub', '안녕하세요'));
 
     expect(Translator::translate('Hello', 'ko')->text)->toBe('안녕하세요');
 });
 
-it('resolves the fallback translator lazily, without constructing children or caching it', function () {
+it('resolves the fallback driver lazily, without constructing children or caching it', function () {
     config()->set('translator.cache.enabled', true);
     // 'google' is not configured: if children were built eagerly, resolving the
     // fallback translator would blow up here.
@@ -148,7 +153,7 @@ it('resolves the fallback translator lazily, without constructing children or ca
         'translators' => ['deepl', 'google'],
     ]);
 
-    expect(app(TranslatorManager::class)->via('fallback'))->toBeInstanceOf(FallbackDriver::class);
+    expect(app(TranslatorManager::class)->via('fallback')->driver())->toBeInstanceOf(FallbackDriver::class);
 });
 
 it('throws when the fallback translator list is empty', function () {
@@ -159,11 +164,11 @@ it('throws when the fallback translator list is empty', function () {
 });
 
 /**
- * A minimal stub translator tagging results with the given name.
+ * A minimal stub driver tagging results with the given name.
  */
-function stubTranslator(string $name, string $text = 'translated'): TranslatorContract
+function stubDriver(string $name, string $text = 'translated'): Driver
 {
-    return new class($name, $text) implements TranslatorContract
+    return new class($name, $text) implements Driver
     {
         public function __construct(private string $name, private string $text)
         {

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
-use Minhyung\LaravelTranslator\Contracts\Translator;
-use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
  * In-memory fake driver that records how it was called.
  */
-function fakeDriver(): Translator
+function fakeDriver(): Driver
 {
-    return new class implements Translator {
+    return new class implements Driver {
         public int $translateCalls = 0;
 
         /** @var array<int, array<array-key, string>> */
@@ -45,7 +45,7 @@ function arrayCache(): Repository
 
 it('caches single translations and serves the second call from cache', function () {
     $inner = fakeDriver();
-    $translator = new CachingTranslator($inner, arrayCache(), 'fake');
+    $translator = new CachingDriver($inner, arrayCache(), 'fake');
 
     $first = $translator->translate('hello', 'ko');
     $second = $translator->translate('hello', 'ko');
@@ -57,7 +57,7 @@ it('caches single translations and serves the second call from cache', function 
 
 it('treats different options/languages as distinct cache entries', function () {
     $inner = fakeDriver();
-    $translator = new CachingTranslator($inner, arrayCache(), 'fake');
+    $translator = new CachingDriver($inner, arrayCache(), 'fake');
 
     $translator->translate('hello', 'ko');
     $translator->translate('hello', 'ja');
@@ -68,7 +68,7 @@ it('treats different options/languages as distinct cache entries', function () {
 
 it('only sends cache misses to the inner batch call and preserves order', function () {
     $inner = fakeDriver();
-    $translator = new CachingTranslator($inner, arrayCache(), 'fake');
+    $translator = new CachingDriver($inner, arrayCache(), 'fake');
 
     // Warm the cache for one of the three texts.
     $translator->translate('b', 'ko');

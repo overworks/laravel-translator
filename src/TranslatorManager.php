@@ -13,8 +13,9 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Minhyung\LaravelTranslator\Contracts\Translator;
-use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
+use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
@@ -28,9 +29,11 @@ use Psr\Log\LoggerInterface;
  * caching.
  *
  * Modeled on Laravel's FilesystemManager: each entry under
- * `translator.translators` is a named instance selected with translator(), and
- * its "driver" key picks the implementation (deepl, google, claude, openai,
- * fallback, or a custom one registered via extend()).
+ * `translator.translators` is a named instance selected with via(), and its
+ * "driver" key picks the implementation (deepl, google, claude, openai,
+ * fallback, or a custom one registered via extend()). A {@see Translator} is
+ * the public object handed back; the {@see Driver} is the implementation behind
+ * it.
  *
  * @mixin \Minhyung\LaravelTranslator\Contracts\Translator
  */
@@ -39,9 +42,16 @@ class TranslatorManager
     /**
      * Resolved translators, memoized by name.
      *
-     * @var array<string, Translator>
+     * @var array<string, TranslatorContract>
      */
     protected array $translators = [];
+
+    /**
+     * Resolved drivers (cache-wrapped), memoized by name.
+     *
+     * @var array<string, Driver>
+     */
+    protected array $drivers = [];
 
     /**
      * Custom driver creators registered via extend(), keyed by driver name.
@@ -55,13 +65,13 @@ class TranslatorManager
     }
 
     /**
-     * Get a translator instance by name (the default when omitted).
+     * Get a translator by name (the default when omitted).
      */
-    public function via(?string $name = null): Translator
+    public function via(?string $name = null): TranslatorContract
     {
         $name ??= $this->getDefaultTranslator();
 
-        return $this->translators[$name] ??= $this->resolve($name);
+        return $this->translators[$name] ??= new Translator($name, $this->resolveDriver($name));
     }
 
     /**
@@ -84,7 +94,7 @@ class TranslatorManager
      * Register a custom driver creator.
      *
      * The callback receives ($container, $name, $config) and must return a
-     * Translator. Reference it from config with `'driver' => '<driver>'`.
+     * {@see Driver}. Reference it from config with `'driver' => '<driver>'`.
      */
     public function extend(string $driver, Closure $callback): static
     {
@@ -94,9 +104,15 @@ class TranslatorManager
     }
 
     /**
-     * Resolve a fresh translator from its config entry.
+     * Resolve a translator's driver from its config entry, wrapping it with
+     * caching when enabled. Memoized by name.
      */
-    protected function resolve(string $name): Translator
+    protected function resolveDriver(string $name): Driver
+    {
+        return $this->drivers[$name] ??= $this->wrapWithCache($name, $this->build($name));
+    }
+
+    protected function build(string $name): Driver
     {
         $config = $this->getConfig($name);
 
@@ -110,17 +126,15 @@ class TranslatorManager
 
         $driver = $config['driver'];
 
-        $translator = isset($this->customCreators[$driver])
+        return isset($this->customCreators[$driver])
             ? ($this->customCreators[$driver])($this->container, $name, $config)
             : $this->callBuiltinCreator($name, $driver, $config);
-
-        return $this->wrapWithCache($name, $translator);
     }
 
     /**
      * @param  array<string, mixed>  $config
      */
-    protected function callBuiltinCreator(string $name, string $driver, array $config): Translator
+    protected function callBuiltinCreator(string $name, string $driver, array $config): Driver
     {
         $method = 'create' . Str::studly($driver) . 'Driver';
 
@@ -136,7 +150,7 @@ class TranslatorManager
     /**
      * @param  array<string, mixed>  $config
      */
-    protected function createDeeplDriver(string $name, array $config): Translator
+    protected function createDeeplDriver(string $name, array $config): Driver
     {
         if (empty($config['key'])) {
             throw new InvalidArgumentException(
@@ -150,7 +164,7 @@ class TranslatorManager
     /**
      * @param  array<string, mixed>  $config
      */
-    protected function createGoogleDriver(string $name, array $config): Translator
+    protected function createGoogleDriver(string $name, array $config): Driver
     {
         if (empty($config['key'])) {
             throw new InvalidArgumentException(
@@ -164,7 +178,7 @@ class TranslatorManager
     /**
      * @param  array<string, mixed>  $config
      */
-    protected function createClaudeDriver(string $name, array $config): Translator
+    protected function createClaudeDriver(string $name, array $config): Driver
     {
         if (empty($config['key'])) {
             throw new InvalidArgumentException(
@@ -190,7 +204,7 @@ class TranslatorManager
      *
      * @param  array<string, mixed>  $config
      */
-    protected function createOpenaiDriver(string $name, array $config): Translator
+    protected function createOpenaiDriver(string $name, array $config): Driver
     {
         if (empty($config['model'])) {
             throw new InvalidArgumentException(
@@ -212,7 +226,7 @@ class TranslatorManager
     /**
      * @param  array<string, mixed>  $config
      */
-    protected function createFallbackDriver(string $name, array $config): Translator
+    protected function createFallbackDriver(string $name, array $config): Driver
     {
         $names = $config['translators'] ?? [];
 
@@ -229,33 +243,33 @@ class TranslatorManager
                 throw new InvalidArgumentException("The [{$name}] fallback translator cannot reference itself.");
             }
 
-            // Resolve each child lazily through via() (so it gets its own
-            // caching) only when it is actually reached. This prevents a child
-            // that cannot be constructed from breaking the whole chain.
-            $factories[$child] = fn (): Translator => $this->via($child);
+            // Resolve each child driver lazily (so it gets its own caching) only
+            // when it is actually reached. This prevents a child that cannot be
+            // constructed from breaking the whole chain.
+            $factories[$child] = fn (): Driver => $this->resolveDriver($child);
         }
 
         return new FallbackDriver($factories, $this->container->make(LoggerInterface::class));
     }
 
-    protected function wrapWithCache(string $name, Translator $translator): Translator
+    protected function wrapWithCache(string $name, Driver $driver): Driver
     {
         // A fallback's children are already cached individually; caching the
         // composite again would mask provider recovery.
-        if ($translator instanceof FallbackDriver) {
-            return $translator;
+        if ($driver instanceof FallbackDriver) {
+            return $driver;
         }
 
         $cache = $this->config()->get('translator.cache', []);
 
         if (empty($cache['enabled'])) {
-            return $translator;
+            return $driver;
         }
 
         $store = $this->container->make(CacheFactory::class)->store($cache['store'] ?? null);
 
-        return new CachingTranslator(
-            inner: $translator,
+        return new CachingDriver(
+            inner: $driver,
             cache: $store,
             translator: $name,
             ttl: $cache['ttl'] ?? null,
