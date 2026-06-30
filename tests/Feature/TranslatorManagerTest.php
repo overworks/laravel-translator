@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
@@ -10,7 +9,6 @@ use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use Minhyung\LaravelTranslator\Facades\Translator;
-use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Minhyung\LaravelTranslator\TranslatorManager;
 
 beforeEach(function () {
@@ -162,26 +160,3 @@ it('throws when the fallback translator list is empty', function () {
     expect(fn () => app(TranslatorManager::class)->via('fallback'))
         ->toThrow(InvalidArgumentException::class);
 });
-
-/**
- * A minimal stub driver tagging results with the given name.
- */
-function stubDriver(string $name, string $text = 'translated'): Driver
-{
-    return new class($name, $text) implements Driver
-    {
-        public function __construct(private string $name, private string $text)
-        {
-        }
-
-        public function translate(string $text, string $targetLang, ?string $sourceLang = null, array $options = []): TranslationResult
-        {
-            return new TranslationResult(text: $this->text, targetLang: $targetLang, translator: $this->name);
-        }
-
-        public function translateBatch(array $texts, string $targetLang, ?string $sourceLang = null, array $options = []): array
-        {
-            return [];
-        }
-    };
-}
