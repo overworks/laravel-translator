@@ -29,12 +29,11 @@ use Psr\Log\LoggerInterface;
  * Resolves named translators from config and (optionally) wraps them with
  * caching.
  *
- * Modeled on Laravel's FilesystemManager: each entry under
- * `translator.translators` is a named instance selected with via(), and its
- * "driver" key picks the implementation (deepl, google, claude, openai,
- * fallback, or a custom one registered via extend()). A {@see Translator} is
- * the public object handed back; the {@see Driver} is the implementation behind
- * it.
+ * Each entry under `translator.translators` is a named instance selected with
+ * via(), and its "driver" key picks the implementation (deepl, google, claude,
+ * openai, fallback, or a custom one registered via extend()). A {@see Translator}
+ * is the public object handed back; the {@see Driver} is the implementation
+ * behind it.
  *
  * @mixin \Minhyung\LaravelTranslator\Contracts\Translator
  */
