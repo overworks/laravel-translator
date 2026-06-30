@@ -6,11 +6,14 @@ namespace Minhyung\LaravelTranslator\Drivers;
 
 use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Events\TranslationFellBack;
 use Minhyung\LaravelTranslator\Exceptions\AllTranslationDriversFailedException;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -21,7 +24,7 @@ use Throwable;
  * later one that fails to even construct (e.g. missing credentials) never
  * prevents an earlier, healthy driver from running.
  */
-class FallbackDriver implements Driver
+class FallbackDriver implements Driver, DetectsLanguage
 {
     /**
      * Successfully constructed drivers, memoized by name.
@@ -60,6 +63,13 @@ class FallbackDriver implements Driver
         return $this->attempt(
             fn (Driver $driver): array => $driver->translateBatch($texts, $targetLang, $sourceLang, $options)
         );
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        return $this->attempt(fn (Driver $driver): LanguageDetection => $driver instanceof DetectsLanguage
+            ? $driver->detect($text)
+            : throw new RuntimeException('Driver does not support language detection.'));
     }
 
     /**

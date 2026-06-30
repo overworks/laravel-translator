@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Contracts;
 
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
+use RuntimeException;
 
 /**
  * Public translator contract — the type the manager returns and that is bound
@@ -43,4 +45,11 @@ interface Translator
         ?string $sourceLang = null,
         array $options = []
     ): array;
+
+    /**
+     * Detect the language of $text.
+     *
+     * @throws RuntimeException  When the underlying driver cannot detect languages.
+     */
+    public function detect(string $text): LanguageDetection;
 }

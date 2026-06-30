@@ -5,15 +5,21 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Illuminate\Contracts\Cache\Repository;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
+use RuntimeException;
 
 /**
  * Decorator driver that caches translation results from any inner driver using
  * a Laravel cache repository, avoiding repeated API calls (and billing) for
  * identical inputs.
+ *
+ * It also implements {@see DetectsLanguage} transparently so language detection
+ * keeps working through the cache layer (delegating to the inner driver).
  */
-class CachingDriver implements Driver
+class CachingDriver implements Driver, DetectsLanguage
 {
     /**
      * @param  Driver      $inner       The wrapped driver that performs real translations.
@@ -89,6 +95,15 @@ class CachingDriver implements Driver
 
         // Restore the original ordering of $texts.
         return array_replace($texts, $results);
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        if (! $this->inner instanceof DetectsLanguage) {
+            throw new RuntimeException("The [{$this->translator}] translator does not support language detection.");
+        }
+
+        return $this->inner->detect($text);
     }
 
     protected function put(string $key, TranslationResult $result): void

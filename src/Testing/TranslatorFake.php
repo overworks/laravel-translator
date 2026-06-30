@@ -8,6 +8,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Collection;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Minhyung\LaravelTranslator\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
@@ -26,6 +27,11 @@ class TranslatorFake extends TranslatorManager
      * @var list<array{translator: string, text: string, target: string, source: string|null, options: array<string, mixed>}>
      */
     protected array $translated = [];
+
+    /**
+     * @var list<array{translator: string, text: string}>
+     */
+    protected array $detected = [];
 
     /**
      * @var array<string, string>|callable|null
@@ -88,6 +94,24 @@ class TranslatorFake extends TranslatorManager
             targetLang: $target,
             translator: $translator,
             detectedSourceLang: $source,
+        );
+    }
+
+    /**
+     * Record a language detection and return a canned result. Called by FakeDriver.
+     */
+    public function recordDetection(string $translator, string $text): LanguageDetection
+    {
+        $this->detected[] = ['translator' => $translator, 'text' => $text];
+
+        return new LanguageDetection('en', $translator, 1.0);
+    }
+
+    public function assertDetected(string $text): void
+    {
+        PHPUnit::assertTrue(
+            (new Collection($this->detected))->contains('text', $text),
+            "Expected the language of [{$text}] to be detected, but it was not.",
         );
     }
 

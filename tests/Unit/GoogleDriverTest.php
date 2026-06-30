@@ -71,3 +71,20 @@ it('returns an empty array for an empty batch without calling the API', function
 
     $http->assertNothingSent();
 });
+
+it('detects the language via the /detect endpoint', function () {
+    $http = new Factory();
+    $http->fake([
+        '*' => Factory::response(['data' => ['detections' => [[['language' => 'en', 'confidence' => 0.98]]]]]),
+    ]);
+
+    $detection = (new GoogleDriver($http, 'test-key'))->detect('Hello');
+
+    expect($detection->language)->toBe('en')
+        ->and($detection->translator)->toBe('google')
+        ->and($detection->confidence)->toBe(0.98);
+
+    $http->assertSent(fn ($request) => str_contains($request->url(), '/v2/detect')
+        && str_contains($request->url(), 'key=test-key')
+        && $request->data()['q'] === 'Hello');
+});

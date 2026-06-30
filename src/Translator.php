@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Events\BatchTranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationFailed;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -36,6 +39,20 @@ final class Translator implements TranslatorContract
     public function name(): string
     {
         return $this->name;
+    }
+
+    /**
+     * Detect the language of $text.
+     *
+     * @throws RuntimeException  When the underlying driver cannot detect languages.
+     */
+    public function detect(string $text): LanguageDetection
+    {
+        if (! $this->driver instanceof DetectsLanguage) {
+            throw new RuntimeException("The [{$this->name}] translator does not support language detection.");
+        }
+
+        return $this->driver->detect($text);
     }
 
     /**

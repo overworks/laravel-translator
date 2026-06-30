@@ -75,3 +75,18 @@ it('returns an empty array for an empty batch without calling the API', function
 
     $http->assertNothingSent();
 });
+
+it('detects the language via :detectLanguage', function () {
+    $http = new Factory();
+    $http->fake(['*' => Factory::response(['languages' => [['languageCode' => 'en', 'confidence' => 1.0]]])]);
+
+    $detection = v3Driver($http)->detect('Hello');
+
+    expect($detection->language)->toBe('en')
+        ->and($detection->translator)->toBe('google')
+        ->and($detection->confidence)->toBe(1.0);
+
+    $http->assertSent(fn ($request) => str_contains($request->url(), ':detectLanguage')
+        && $request->hasHeader('Authorization', 'Bearer fake-token')
+        && $request->data()['content'] === 'Hello');
+});

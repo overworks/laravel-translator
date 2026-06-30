@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Localization\LangFileTranslator;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -21,6 +22,11 @@ function bracketTranslator(): TranslatorContract
         public function translateBatch(array $texts, string $targetLang, ?string $sourceLang = null, array $options = []): array
         {
             return array_map(fn (string $t) => new TranslationResult('[' . $t . ']', $targetLang, 'wrap'), $texts);
+        }
+
+        public function detect(string $text): LanguageDetection
+        {
+            return new LanguageDetection('en', 'wrap');
         }
     };
 }

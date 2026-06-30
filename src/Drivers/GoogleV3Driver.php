@@ -6,7 +6,9 @@ namespace Minhyung\LaravelTranslator\Drivers;
 
 use Closure;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -17,7 +19,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * supplied by a provider closure so this class stays free of the auth library
  * and is easy to test.
  */
-class GoogleV3Driver implements Driver
+class GoogleV3Driver implements Driver, DetectsLanguage
 {
     /**
      * @param  HttpFactory  $http      Laravel HTTP client factory.
@@ -86,6 +88,25 @@ class GoogleV3Driver implements Driver
         );
 
         return array_combine($keys, $mapped);
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        $url = "{$this->endpoint}/projects/{$this->project}/locations/{$this->location}:detectLanguage";
+
+        $language = $this->http
+            ->withToken(($this->token)())
+            ->asJson()
+            ->acceptJson()
+            ->post($url, ['content' => $text, 'mimeType' => 'text/plain'])
+            ->throw()
+            ->json('languages.0', []);
+
+        return new LanguageDetection(
+            language: $language['languageCode'] ?? '',
+            translator: $this->name,
+            confidence: isset($language['confidence']) ? (float) $language['confidence'] : null,
+        );
     }
 
     /**

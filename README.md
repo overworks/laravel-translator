@@ -209,6 +209,22 @@ use Minhyung\LaravelTranslator\Contracts\Translator;
 public function __construct(private Translator $translator) {}
 ```
 
+## Language detection
+
+Drivers that can detect a language — `google` (v2 and v3) and `libretranslate` — expose `detect()`:
+
+```php
+use Minhyung\LaravelTranslator\Facades\Translator;
+
+$detection = Translator::via('google')->detect('Bonjour le monde');
+
+$detection->language;   // "fr"
+$detection->confidence; // 0.98 (0–1, when the provider reports it)
+(string) $detection;    // "fr"
+```
+
+Detection flows through caching, retries, and fallback like translation does. Calling `detect()` on a translator whose driver can't detect (e.g. `deepl`, `openai`) throws a clear error.
+
 ## Command line
 
 Translate a string straight from the terminal:

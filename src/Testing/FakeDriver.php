@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Testing;
 
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
  * Driver used by {@see TranslatorFake}: records every translation on the fake
  * and returns the fake's canned result instead of calling a real provider.
  */
-class FakeDriver implements Driver
+class FakeDriver implements Driver, DetectsLanguage
 {
     public function __construct(
         protected string $name,
@@ -44,5 +46,10 @@ class FakeDriver implements Driver
             ),
             $texts,
         );
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        return $this->fake->recordDetection($this->name, $text);
     }
 }

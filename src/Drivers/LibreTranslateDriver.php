@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -16,7 +18,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * keyed instances require it). Batch requests send `q` as an array, which the
  * API answers with an array of translations.
  */
-class LibreTranslateDriver implements Driver
+class LibreTranslateDriver implements Driver, DetectsLanguage
 {
     /**
      * @param  HttpFactory  $http     Laravel HTTP client factory.
@@ -86,6 +88,30 @@ class LibreTranslateDriver implements Driver
         }
 
         return array_combine($keys, $results);
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        $payload = array_filter([
+            'q' => $text,
+            'api_key' => $this->apiKey,
+        ], fn ($value): bool => $value !== null);
+
+        $detection = $this->http
+            ->asJson()
+            ->acceptJson()
+            ->post(rtrim($this->baseUrl, '/') . '/detect', $payload)
+            ->throw()
+            ->json('0', []);
+
+        // LibreTranslate reports confidence on a 0–100 scale; normalize to 0–1.
+        $confidence = isset($detection['confidence']) ? ((float) $detection['confidence']) / 100 : null;
+
+        return new LanguageDetection(
+            language: $detection['language'] ?? '',
+            translator: $this->name,
+            confidence: $confidence,
+        );
     }
 
     /**

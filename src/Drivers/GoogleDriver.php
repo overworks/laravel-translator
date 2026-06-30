@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -14,7 +16,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * Uses the simple REST endpoint authenticated with an API key, so no
  * service-account credentials or gRPC are required.
  */
-class GoogleDriver implements Driver
+class GoogleDriver implements Driver, DetectsLanguage
 {
     public function __construct(
         protected HttpFactory $http,
@@ -72,6 +74,23 @@ class GoogleDriver implements Driver
         );
 
         return array_combine($keys, $mapped);
+    }
+
+    public function detect(string $text): LanguageDetection
+    {
+        $detection = $this->http
+            ->withQueryParameters(['key' => $this->key])
+            ->asJson()
+            ->acceptJson()
+            ->post("{$this->endpoint}/detect", ['q' => $text])
+            ->throw()
+            ->json('data.detections.0.0', []);
+
+        return new LanguageDetection(
+            language: $detection['language'] ?? '',
+            translator: $this->name,
+            confidence: isset($detection['confidence']) ? (float) $detection['confidence'] : null,
+        );
     }
 
     /**

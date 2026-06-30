@@ -87,3 +87,18 @@ it('returns an empty array for an empty batch without calling the API', function
 
     $http->assertNothingSent();
 });
+
+it('detects the language via /detect and normalizes confidence to 0-1', function () {
+    $http = new Factory();
+    $http->fake(['*' => Factory::response([['confidence' => 92.0, 'language' => 'en']])]);
+
+    $detection = (new LibreTranslateDriver($http, 'https://lt.test', 'secret-key'))->detect('Hello');
+
+    expect($detection->language)->toBe('en')
+        ->and($detection->translator)->toBe('libretranslate')
+        ->and($detection->confidence)->toBe(0.92);
+
+    $http->assertSent(fn ($request) => $request->url() === 'https://lt.test/detect'
+        && $request->data()['q'] === 'Hello'
+        && $request->data()['api_key'] === 'secret-key');
+});
