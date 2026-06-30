@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Testing;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Collection;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -45,14 +46,21 @@ class TranslatorFake extends TranslatorManager
     {
         $name ??= $this->getDefaultTranslator();
 
-        return new Translator($name, new FakeDriver($name, $this));
+        return $this->wrap($name);
     }
 
     public function build(array $config, ?string $name = null): Translator
     {
-        $name ??= ($config['driver'] ?? 'fake');
+        return $this->wrap($name ?? ($config['driver'] ?? 'fake'));
+    }
 
-        return new Translator($name, new FakeDriver($name, $this));
+    /**
+     * Wrap a recording FakeDriver in a real Translator, keeping the event
+     * dispatcher so lifecycle events still fire (just like the real manager).
+     */
+    protected function wrap(string $name): Translator
+    {
+        return new Translator($name, new FakeDriver($name, $this), $this->container->make(Dispatcher::class));
     }
 
     /**

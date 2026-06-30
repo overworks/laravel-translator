@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Event;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Events\TranslationCompleted;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\Testing\TranslatorFake;
 use Minhyung\LaravelTranslator\TranslatorManager;
@@ -80,6 +82,15 @@ it('is used by the injected Translator contract', function () {
     app(TranslatorContract::class)->translate('Injected', 'ko');
 
     $fake->assertTranslated('Injected');
+});
+
+it('still dispatches lifecycle events so event-driven code is testable', function () {
+    Event::fake();
+    Translator::fake();
+
+    Translator::translate('Hello', 'ko');
+
+    Event::assertDispatched(TranslationCompleted::class, fn (TranslationCompleted $e) => $e->text === 'Hello');
 });
 
 it('records translators built at runtime', function () {
