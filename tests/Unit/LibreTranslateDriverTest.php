@@ -102,3 +102,19 @@ it('detects the language via /detect and normalizes confidence to 0-1', function
         && $request->data()['q'] === 'Hello'
         && $request->data()['api_key'] === 'secret-key');
 });
+
+it('lists languages via /languages', function () {
+    $http = new Factory();
+    $http->fake(['*' => Factory::response([
+        ['code' => 'en', 'name' => 'English', 'targets' => ['ko', 'ja']],
+        ['code' => 'ko', 'name' => 'Korean', 'targets' => ['en']],
+    ])]);
+
+    $languages = (new LibreTranslateDriver($http, 'https://lt.test'))->languages();
+
+    expect($languages)->toHaveCount(2)
+        ->and($languages[0]->code)->toBe('en')
+        ->and($languages[0]->name)->toBe('English');
+
+    $http->assertSent(fn ($request) => $request->url() === 'https://lt.test/languages');
+});

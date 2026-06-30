@@ -7,6 +7,7 @@ namespace Minhyung\LaravelTranslator\Drivers;
 use Closure;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -17,10 +18,10 @@ use Throwable;
  * backoff between attempts. Useful for shrugging off transient provider errors
  * (timeouts, 429/5xx) without falling all the way over to another translator.
  *
- * Implements {@see DetectsLanguage} transparently so detection keeps working
- * (and is retried) through the retry layer.
+ * Forwards {@see DetectsLanguage} and {@see ListsLanguages} transparently so
+ * those keep working (and are retried) through the retry layer.
  */
-class RetryingDriver implements Driver, DetectsLanguage
+class RetryingDriver implements Driver, DetectsLanguage, ListsLanguages
 {
     /**
      * @param  Driver  $inner    The wrapped driver.
@@ -63,6 +64,15 @@ class RetryingDriver implements Driver, DetectsLanguage
         }
 
         return $this->attempt(fn (): LanguageDetection => $this->inner->detect($text));
+    }
+
+    public function languages(): array
+    {
+        if (! $this->inner instanceof ListsLanguages) {
+            throw new RuntimeException('The wrapped driver does not support listing languages.');
+        }
+
+        return $this->attempt(fn (): array => $this->inner->languages());
     }
 
     /**

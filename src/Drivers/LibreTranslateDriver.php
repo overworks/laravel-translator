@@ -7,6 +7,8 @@ namespace Minhyung\LaravelTranslator\Drivers;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
@@ -18,7 +20,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * keyed instances require it). Batch requests send `q` as an array, which the
  * API answers with an array of translations.
  */
-class LibreTranslateDriver implements Driver, DetectsLanguage
+class LibreTranslateDriver implements Driver, DetectsLanguage, ListsLanguages
 {
     /**
      * @param  HttpFactory  $http     Laravel HTTP client factory.
@@ -111,6 +113,23 @@ class LibreTranslateDriver implements Driver, DetectsLanguage
             language: $detection['language'] ?? '',
             translator: $this->name,
             confidence: $confidence,
+        );
+    }
+
+    public function languages(): array
+    {
+        $languages = $this->http
+            ->acceptJson()
+            ->get(rtrim($this->baseUrl, '/') . '/languages')
+            ->throw()
+            ->json() ?? [];
+
+        return array_map(
+            fn (array $language): Language => new Language(
+                code: $language['code'] ?? '',
+                name: $language['name'] ?? null,
+            ),
+            $languages,
         );
     }
 

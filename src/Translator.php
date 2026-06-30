@@ -7,6 +7,7 @@ namespace Minhyung\LaravelTranslator;
 use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Events\BatchTranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationCompleted;
@@ -53,6 +54,22 @@ final class Translator implements TranslatorContract
         }
 
         return $this->driver->detect($text);
+    }
+
+    /**
+     * List the languages this translator supports.
+     *
+     * @return array<int, \Minhyung\LaravelTranslator\Support\Language>
+     *
+     * @throws RuntimeException  When the underlying driver cannot list languages.
+     */
+    public function languages(): array
+    {
+        if (! $this->driver instanceof ListsLanguages) {
+            throw new RuntimeException("The [{$this->name}] translator does not support listing languages.");
+        }
+
+        return $this->driver->languages();
     }
 
     /**

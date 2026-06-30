@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
 use Minhyung\LaravelTranslator\Events\TranslationFellBack;
 use Minhyung\LaravelTranslator\Exceptions\AllTranslationDriversFailedException;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
@@ -24,7 +25,7 @@ use Throwable;
  * later one that fails to even construct (e.g. missing credentials) never
  * prevents an earlier, healthy driver from running.
  */
-class FallbackDriver implements Driver, DetectsLanguage
+class FallbackDriver implements Driver, DetectsLanguage, ListsLanguages
 {
     /**
      * Successfully constructed drivers, memoized by name.
@@ -70,6 +71,13 @@ class FallbackDriver implements Driver, DetectsLanguage
         return $this->attempt(fn (Driver $driver): LanguageDetection => $driver instanceof DetectsLanguage
             ? $driver->detect($text)
             : throw new RuntimeException('Driver does not support language detection.'));
+    }
+
+    public function languages(): array
+    {
+        return $this->attempt(fn (Driver $driver): array => $driver instanceof ListsLanguages
+            ? $driver->languages()
+            : throw new RuntimeException('Driver does not support listing languages.'));
     }
 
     /**

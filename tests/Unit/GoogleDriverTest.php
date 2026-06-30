@@ -88,3 +88,22 @@ it('detects the language via the /detect endpoint', function () {
         && str_contains($request->url(), 'key=test-key')
         && $request->data()['q'] === 'Hello');
 });
+
+it('lists languages via the /languages endpoint', function () {
+    $http = new Factory();
+    $http->fake([
+        '*' => Factory::response(['data' => ['languages' => [
+            ['language' => 'en', 'name' => 'English'],
+            ['language' => 'ko', 'name' => 'Korean'],
+        ]]]),
+    ]);
+
+    $languages = (new GoogleDriver($http, 'test-key'))->languages();
+
+    expect($languages)->toHaveCount(2)
+        ->and($languages[0]->code)->toBe('en')
+        ->and($languages[0]->name)->toBe('English');
+
+    $http->assertSent(fn ($request) => str_contains($request->url(), '/v2/languages')
+        && str_contains($request->url(), 'key=test-key'));
+});

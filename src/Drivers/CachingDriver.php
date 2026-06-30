@@ -7,6 +7,7 @@ namespace Minhyung\LaravelTranslator\Drivers;
 use Illuminate\Contracts\Cache\Repository;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -16,10 +17,10 @@ use RuntimeException;
  * a Laravel cache repository, avoiding repeated API calls (and billing) for
  * identical inputs.
  *
- * It also implements {@see DetectsLanguage} transparently so language detection
- * keeps working through the cache layer (delegating to the inner driver).
+ * It also forwards {@see DetectsLanguage} and {@see ListsLanguages} transparently
+ * so those capabilities keep working through the cache layer.
  */
-class CachingDriver implements Driver, DetectsLanguage
+class CachingDriver implements Driver, DetectsLanguage, ListsLanguages
 {
     /**
      * @param  Driver      $inner       The wrapped driver that performs real translations.
@@ -104,6 +105,15 @@ class CachingDriver implements Driver, DetectsLanguage
         }
 
         return $this->inner->detect($text);
+    }
+
+    public function languages(): array
+    {
+        if (! $this->inner instanceof ListsLanguages) {
+            throw new RuntimeException("The [{$this->translator}] translator does not support listing languages.");
+        }
+
+        return $this->inner->languages();
     }
 
     protected function put(string $key, TranslationResult $result): void

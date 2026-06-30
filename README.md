@@ -225,6 +225,19 @@ $detection->confidence; // 0.98 (0–1, when the provider reports it)
 
 Detection flows through caching, retries, and fallback like translation does. Calling `detect()` on a translator whose driver can't detect (e.g. `deepl`, `openai`) throws a clear error.
 
+### Supported languages
+
+Drivers that can enumerate their languages — `deepl`, `google` (v2 and v3), and `libretranslate` — expose `languages()`:
+
+```php
+foreach (Translator::via('deepl')->languages() as $language) {
+    $language->code;   // "EN-US"
+    $language->name;   // "English (American)"
+    $language->source; // can be a source language?
+    $language->target; // can be a target language?
+}
+```
+
 ## Command line
 
 Translate a string straight from the terminal:

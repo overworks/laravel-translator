@@ -90,3 +90,23 @@ it('detects the language via :detectLanguage', function () {
         && $request->hasHeader('Authorization', 'Bearer fake-token')
         && $request->data()['content'] === 'Hello');
 });
+
+it('lists supported languages with source/target flags', function () {
+    $http = new Factory();
+    $http->fake([
+        '*' => Factory::response(['languages' => [
+            ['languageCode' => 'en', 'displayName' => 'English', 'supportSource' => true, 'supportTarget' => true],
+            ['languageCode' => 'zh', 'displayName' => 'Chinese', 'supportSource' => true, 'supportTarget' => false],
+        ]]),
+    ]);
+
+    $languages = v3Driver($http)->languages();
+
+    expect($languages[0]->code)->toBe('en')
+        ->and($languages[0]->name)->toBe('English')
+        ->and($languages[1]->code)->toBe('zh')
+        ->and($languages[1]->target)->toBeFalse();
+
+    $http->assertSent(fn ($request) => str_contains($request->url(), '/supportedLanguages')
+        && $request->hasHeader('Authorization', 'Bearer fake-token'));
+});

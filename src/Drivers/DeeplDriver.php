@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator\Drivers;
 
 use DeepL\DeepLClient;
+use DeepL\Language as DeepLLanguage;
 use DeepL\TextResult;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
  * DeepL driver backed by the official deeplcom/deepl-php client.
  */
-class DeeplDriver implements Driver
+class DeeplDriver implements Driver, ListsLanguages
 {
     public function __construct(
         protected DeepLClient $client,
@@ -54,6 +57,29 @@ class DeeplDriver implements Driver
         );
 
         return array_combine($keys, $mapped);
+    }
+
+    public function languages(): array
+    {
+        $map = [];
+
+        /** @var DeepLLanguage $language */
+        foreach ($this->client->getSourceLanguages() as $language) {
+            $map[$language->code] = new Language($language->code, $language->name, source: true, target: false);
+        }
+
+        /** @var DeepLLanguage $language */
+        foreach ($this->client->getTargetLanguages() as $language) {
+            $isSource = isset($map[$language->code]);
+            $map[$language->code] = new Language(
+                code: $language->code,
+                name: $language->name,
+                source: $isSource,
+                target: true,
+            );
+        }
+
+        return array_values($map);
     }
 
     protected function toResult(TextResult $result, string $targetLang): TranslationResult

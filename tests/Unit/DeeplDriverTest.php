@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use DeepL\DeepLClient;
+use DeepL\Language as DeepLLanguage;
 use DeepL\TextResult;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -46,4 +47,27 @@ it('returns an empty array for an empty batch', function () {
     $client->shouldNotReceive('translateText');
 
     expect((new DeeplDriver($client))->translateBatch([], 'ko'))->toBe([]);
+});
+
+it('lists languages, merging source and target with flags', function () {
+    $client = Mockery::mock(DeepLClient::class);
+    $client->shouldReceive('getSourceLanguages')->once()->andReturn([
+        new DeepLLanguage('English', 'EN', null),
+        new DeepLLanguage('Korean', 'KO', null),
+    ]);
+    $client->shouldReceive('getTargetLanguages')->once()->andReturn([
+        new DeepLLanguage('English (American)', 'EN-US', false),
+        new DeepLLanguage('Korean', 'KO', false),
+    ]);
+
+    $languages = (new DeeplDriver($client))->languages();
+    $byCode = collect($languages)->keyBy('code');
+
+    expect($byCode)->toHaveKeys(['EN', 'KO', 'EN-US'])
+        ->and($byCode['EN']->source)->toBeTrue()
+        ->and($byCode['EN']->target)->toBeFalse()   // source-only
+        ->and($byCode['EN-US']->source)->toBeFalse() // target-only
+        ->and($byCode['EN-US']->target)->toBeTrue()
+        ->and($byCode['KO']->source)->toBeTrue()     // in both
+        ->and($byCode['KO']->target)->toBeTrue();
 });

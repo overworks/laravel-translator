@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Contracts;
 
+use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -52,4 +53,13 @@ interface Translator
      * @throws RuntimeException  When the underlying driver cannot detect languages.
      */
     public function detect(string $text): LanguageDetection;
+
+    /**
+     * List the languages this translator supports.
+     *
+     * @return array<int, Language>
+     *
+     * @throws RuntimeException  When the underlying driver cannot list languages.
+     */
+    public function languages(): array;
 }

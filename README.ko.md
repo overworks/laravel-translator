@@ -220,6 +220,19 @@ $detection->confidence; // 0.98 (프로바이더가 제공하면 0–1)
 
 감지도 번역과 마찬가지로 캐싱·재시도·fallback을 거칩니다. 감지를 지원하지 않는 드라이버(`deepl`, `openai` 등)에 `detect()`를 호출하면 명확한 예외를 던집니다.
 
+### 지원 언어 목록
+
+언어 목록을 제공하는 드라이버 — `deepl`, `google`(v2·v3), `libretranslate` — 는 `languages()`를 제공합니다:
+
+```php
+foreach (Translator::via('deepl')->languages() as $language) {
+    $language->code;   // "EN-US"
+    $language->name;   // "English (American)"
+    $language->source; // 소스 언어로 사용 가능?
+    $language->target; // 타깃 언어로 사용 가능?
+}
+```
+
 ## 커맨드라인
 
 터미널에서 바로 번역할 수 있습니다:

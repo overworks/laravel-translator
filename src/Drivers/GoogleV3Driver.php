@@ -8,6 +8,8 @@ use Closure;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
+use Minhyung\LaravelTranslator\Contracts\ListsLanguages;
+use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
@@ -19,7 +21,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * supplied by a provider closure so this class stays free of the auth library
  * and is easy to test.
  */
-class GoogleV3Driver implements Driver, DetectsLanguage
+class GoogleV3Driver implements Driver, DetectsLanguage, ListsLanguages
 {
     /**
      * @param  HttpFactory  $http      Laravel HTTP client factory.
@@ -106,6 +108,28 @@ class GoogleV3Driver implements Driver, DetectsLanguage
             language: $language['languageCode'] ?? '',
             translator: $this->name,
             confidence: isset($language['confidence']) ? (float) $language['confidence'] : null,
+        );
+    }
+
+    public function languages(): array
+    {
+        $url = "{$this->endpoint}/projects/{$this->project}/locations/{$this->location}/supportedLanguages";
+
+        $languages = $this->http
+            ->withToken(($this->token)())
+            ->acceptJson()
+            ->get($url, ['displayLanguageCode' => 'en'])
+            ->throw()
+            ->json('languages', []);
+
+        return array_map(
+            fn (array $language): Language => new Language(
+                code: $language['languageCode'] ?? '',
+                name: $language['displayName'] ?? null,
+                source: (bool) ($language['supportSource'] ?? true),
+                target: (bool) ($language['supportTarget'] ?? true),
+            ),
+            $languages,
         );
     }
 

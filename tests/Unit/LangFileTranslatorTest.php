@@ -28,6 +28,11 @@ function bracketTranslator(): TranslatorContract
         {
             return new LanguageDetection('en', 'wrap');
         }
+
+        public function languages(): array
+        {
+            return [];
+        }
     };
 }
 
