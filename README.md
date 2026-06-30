@@ -186,6 +186,17 @@ php artisan translator:translate "Hello" ko --json
 
 Options: `--from` (source language, auto-detected when omitted), `--via` (translator name, the default when omitted), `--json` (output the full result as JSON).
 
+Check that your configuration is sound — each translator is built and validated (missing keys/models, unknown `fallback` children, an undefined default, ...) and reported in a table:
+
+```bash
+php artisan translator:doctor
+
+# also attempt a live translation through each translator
+php artisan translator:doctor --ping
+```
+
+It exits non-zero when something is misconfigured, so it works in CI.
+
 ## Caching
 
 When `translator.cache.enabled` is on, every driver is wrapped in a `CachingDriver`.

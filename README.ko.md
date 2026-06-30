@@ -181,6 +181,17 @@ php artisan translator:translate "Hello" ko --json
 
 옵션: `--from`(소스 언어, 생략 시 자동 감지), `--via`(translator 이름, 생략 시 기본값), `--json`(전체 결과를 JSON으로 출력).
 
+설정이 올바른지 점검합니다 — 각 translator를 빌드·검증해(키/모델 누락, 알 수 없는 `fallback` 자식, 정의되지 않은 기본값 등) 표로 보고합니다:
+
+```bash
+php artisan translator:doctor
+
+# 각 translator로 실제 번역까지 시도
+php artisan translator:doctor --ping
+```
+
+문제가 있으면 비정상 종료코드를 반환하므로 CI에서도 활용할 수 있습니다.
+
 ## 캐싱
 
 `translator.cache.enabled`가 켜져 있으면 모든 driver가 `CachingDriver`로 감싸집니다.
