@@ -36,9 +36,16 @@ return [
             'key' => env('DEEPL_AUTH_KEY'),
         ],
 
-        // Google Cloud Translation v2 — authenticated with a simple API key.
+        // Google Cloud Translation. Defaults to v2 (Basic), authenticated with a
+        // simple API key. For v3 (Advanced) set 'version' => 3, which needs a
+        // service account / Application Default Credentials instead of a key:
+        //   'version'     => 3,
+        //   'project_id'  => env('GOOGLE_CLOUD_PROJECT'),
+        //   'location'    => env('GOOGLE_TRANSLATE_LOCATION', 'global'),
+        //   'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'), // JSON path; null = ADC
         'google' => [
             'driver' => 'google',
+            'version' => (int) env('GOOGLE_TRANSLATE_VERSION', 2),
             'key' => env('GOOGLE_TRANSLATE_KEY'),
         ],
 

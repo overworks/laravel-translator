@@ -8,7 +8,7 @@ config에 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driv
 내장 드라이버:
 
 - **`deepl`** — DeepL
-- **`google`** — Google Cloud Translation (v2)
+- **`google`** — Google Cloud Translation (기본 v2, `version`으로 v3/Advanced)
 - **`claude`** — 네이티브 Anthropic Messages API ([mozex/anthropic-php](https://github.com/mozex/anthropic-php) 기반)
 - **`openai`** — OpenAI 및 모든 OpenAI 호환 엔드포인트(DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, 사내 게이트웨이)를 `base_url`로 지정 ([openai-php/client](https://github.com/openai-php/client) 기반)
 - **`fallback`** — 여러 translator를 순서대로 시도
@@ -20,7 +20,7 @@ config에 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driv
 - PHP `^8.3`
 - Laravel 12 / 13 (`illuminate/support: ^12.0|^13.0`)
 
-> Google 드라이버는 **Translation API v2**를 사용해 **API 키만으로** 동작합니다. 서비스 계정 자격증명이나 `ext-grpc` PECL 확장이 필요 없습니다.
+> Google 드라이버는 기본적으로 **Translation API v2**를 사용해 **API 키만으로** 동작합니다(서비스 계정 자격증명·`ext-grpc` PECL 확장 불필요). **v3(Advanced)**는 `'version' => 3`으로 켤 수 있으며 서비스 계정 / Application Default Credentials로 인증합니다(REST 전용 — gRPC 여전히 불필요).
 
 ## 설치
 
@@ -102,6 +102,18 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 `openai` driver의 `options`는 `temperature`, `max_tokens`, `system_prompt`, 그리고 `extra_body`(OpenAI SDK의 `extra_body`처럼 요청 본문 최상위에 병합되는 임의 필드 — 위에서 DeepSeek thinking 모드를 끄는 데 사용)를 받습니다.
 
 `openai` driver용 주요 `base_url`: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
+
+`google` driver는 두 API 버전 모두 `google`로 두고 `version`으로 고릅니다. v2(기본)는 API `key`, v3(Advanced)는 `project_id`(+ 선택 `location`)와 서비스 계정 / ADC 인증을 사용합니다:
+
+```php
+'google' => [
+    'driver'      => 'google',
+    'version'     => 3,
+    'project_id'  => env('GOOGLE_CLOUD_PROJECT'),
+    'location'    => 'global',
+    'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'), // 서비스 계정 JSON 경로; null이면 ADC
+],
+```
 
 ```php
 Translator::via('claude')->translate('Hello', 'ko'); // 결과의 ->translator 는 "claude"

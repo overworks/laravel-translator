@@ -13,7 +13,7 @@ You define named **translators** in config, each picking an implementation with 
 Built-in drivers:
 
 - **`deepl`** — DeepL
-- **`google`** — Google Cloud Translation (v2)
+- **`google`** — Google Cloud Translation (v2 by default; v3/Advanced via `version`)
 - **`claude`** — native Anthropic Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
 - **`openai`** — OpenAI and any OpenAI-compatible endpoint (DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, self-hosted gateways) via [openai-php/client](https://github.com/openai-php/client), pointed with `base_url`
 - **`fallback`** — try several translators in order
@@ -25,7 +25,7 @@ No heavyweight LLM abstraction layer — each driver talks to its provider's SDK
 - PHP `^8.3`
 - Laravel 12 / 13 (`illuminate/support: ^12.0|^13.0`)
 
-> The Google driver uses **Translation API v2** and works with **an API key alone** — no service-account credentials or the `ext-grpc` PECL extension required.
+> The Google driver defaults to **Translation API v2**, which works with **an API key alone** — no service-account credentials or the `ext-grpc` PECL extension required. **v3 (Advanced)** is opt-in via `'version' => 3` and authenticates with a service account / Application Default Credentials (REST only — still no gRPC).
 
 ## Installation
 
@@ -107,6 +107,18 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
 For the `openai` driver, `options` accepts `temperature`, `max_tokens`, `system_prompt`, and `extra_body` (arbitrary top-level request-body fields merged into the call, like the OpenAI SDK's `extra_body` — used above to turn off DeepSeek's thinking mode).
 
 Common `base_url`s for the `openai` driver: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
+
+The `google` driver stays `google` for both API versions — pick with `version`. v2 (default) takes an API `key`; v3 (Advanced) takes a `project_id` (and optional `location`) and authenticates with a service account or Application Default Credentials:
+
+```php
+'google' => [
+    'driver'      => 'google',
+    'version'     => 3,
+    'project_id'  => env('GOOGLE_CLOUD_PROJECT'),
+    'location'    => 'global',
+    'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'), // service-account JSON path; null = ADC
+],
+```
 
 ```php
 Translator::via('claude')->translate('Hello', 'ko'); // result's ->translator is "claude"

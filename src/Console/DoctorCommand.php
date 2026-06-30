@@ -118,7 +118,10 @@ class DoctorCommand extends Command
     protected function summarize(string $driver, array $config): string
     {
         return match ($driver) {
-            'deepl', 'google' => $this->keyState($config),
+            'deepl' => $this->keyState($config),
+            'google' => (int) ($config['version'] ?? 2) === 3
+                ? 'v3, project=' . ($config['project_id'] ?? '?')
+                : 'v2, ' . $this->keyState($config),
             'claude' => "model={$config['model']}, " . $this->keyState($config),
             'openai' => "model={$config['model']}, base_url="
                 . ($config['base_url'] ?? 'https://api.openai.com/v1') . ', ' . $this->keyState($config),

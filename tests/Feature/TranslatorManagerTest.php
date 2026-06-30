@@ -7,6 +7,8 @@ use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
+use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
+use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use Minhyung\LaravelTranslator\Facades\Translator;
 use Minhyung\LaravelTranslator\TranslatorManager;
@@ -111,6 +113,32 @@ it('resolves an OpenAI-compatible driver via base_url', function () {
     ]);
 
     expect(app(TranslatorManager::class)->via('deepseek')->driver())->toBeInstanceOf(OpenAiDriver::class);
+});
+
+it('resolves the Google v2 driver by default', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.google', ['driver' => 'google', 'key' => 'AIza-test']);
+
+    expect(app(TranslatorManager::class)->via('google')->driver())->toBeInstanceOf(GoogleDriver::class);
+});
+
+it('resolves the Google v3 driver when version is 3', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.google', [
+        'driver' => 'google',
+        'version' => 3,
+        'project_id' => 'my-project',
+        'location' => 'global',
+    ]);
+
+    expect(app(TranslatorManager::class)->via('google')->driver())->toBeInstanceOf(GoogleV3Driver::class);
+});
+
+it('throws for Google v3 without a project id', function () {
+    config()->set('translator.translators.google', ['driver' => 'google', 'version' => 3]);
+
+    expect(fn () => app(TranslatorManager::class)->via('google'))
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('throws when the OpenAI driver has no model', function () {

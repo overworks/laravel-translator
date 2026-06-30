@@ -7,6 +7,8 @@ namespace Minhyung\LaravelTranslator;
 use Anthropic\Factory as AnthropicFactory;
 use Closure;
 use DeepL\DeepLClient;
+use Google\Auth\ApplicationDefaultCredentials;
+use Google\Auth\Credentials\ServiceAccountCredentials;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Container\Container;
@@ -21,6 +23,7 @@ use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
 use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
 use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
+use Minhyung\LaravelTranslator\Drivers\GoogleV3Driver;
 use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
@@ -193,10 +196,17 @@ class TranslatorManager
     }
 
     /**
+     * Google Cloud Translation. Defaults to v2 (API key); set "version" => 3 for
+     * the Advanced API, which authenticates with a service account / ADC.
+     *
      * @param  array<string, mixed>  $config
      */
     protected function createGoogleDriver(string $name, array $config): Driver
     {
+        if ((int) ($config['version'] ?? 2) === 3) {
+            return $this->createGoogleV3Driver($name, $config);
+        }
+
         if (empty($config['key'])) {
             throw new InvalidArgumentException(
                 "The [{$name}] translator requires a Google API key. Set translator.translators.{$name}.key."
@@ -204,6 +214,50 @@ class TranslatorManager
         }
 
         return new GoogleDriver($this->container->make(HttpFactory::class), $config['key'], $name);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createGoogleV3Driver(string $name, array $config): Driver
+    {
+        if (empty($config['project_id'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator (Google v3) requires a project id. Set translator.translators.{$name}.project_id."
+            );
+        }
+
+        $scope = 'https://www.googleapis.com/auth/cloud-translation';
+        $credentialsPath = $config['credentials'] ?? null;
+
+        // Build the credentials and fetch the token lazily (and memoize it until
+        // it nears expiry), so constructing the driver never touches the network.
+        $credentials = null;
+        $token = null;
+        $expiresAt = 0;
+        $tokenProvider = function () use ($scope, $credentialsPath, &$credentials, &$token, &$expiresAt): string {
+            if ($token !== null && time() < $expiresAt - 60) {
+                return $token;
+            }
+
+            $credentials ??= empty($credentialsPath)
+                ? ApplicationDefaultCredentials::getCredentials($scope)
+                : new ServiceAccountCredentials($scope, $credentialsPath);
+
+            $fetched = $credentials->fetchAuthToken();
+            $token = (string) ($fetched['access_token'] ?? '');
+            $expiresAt = time() + (int) ($fetched['expires_in'] ?? 3600);
+
+            return $token;
+        };
+
+        return new GoogleV3Driver(
+            $this->container->make(HttpFactory::class),
+            $tokenProvider,
+            (string) $config['project_id'],
+            (string) ($config['location'] ?? 'global'),
+            $name,
+        );
     }
 
     /**
