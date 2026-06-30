@@ -9,23 +9,23 @@ use Minhyung\LaravelTranslator\Contracts\Translator;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
- * Decorator that caches translation results from any inner driver using a
+ * Decorator that caches translation results from any inner translator using a
  * Laravel cache repository, avoiding repeated API calls (and billing) for
  * identical inputs.
  */
 class CachingTranslator implements Translator
 {
     /**
-     * @param  Translator  $inner   The wrapped driver that performs real translations.
-     * @param  Repository  $cache   Laravel cache repository to store results in.
-     * @param  string      $driver  Name of the inner driver (used in cache keys).
-     * @param  int|null    $ttl     Cache lifetime in seconds, or null to cache forever.
-     * @param  string      $prefix  Cache key prefix.
+     * @param  Translator  $inner       The wrapped translator that performs real translations.
+     * @param  Repository  $cache       Laravel cache repository to store results in.
+     * @param  string      $translator  Name of the inner translator (used in cache keys).
+     * @param  int|null    $ttl         Cache lifetime in seconds, or null to cache forever.
+     * @param  string      $prefix      Cache key prefix.
      */
     public function __construct(
         protected Translator $inner,
         protected Repository $cache,
-        protected string $driver,
+        protected string $translator,
         protected ?int $ttl = null,
         protected string $prefix = 'translator',
     ) {
@@ -113,6 +113,6 @@ class CachingTranslator implements Translator
             $text,
         ]);
 
-        return sprintf('%s:%s:%s', $this->prefix, $this->driver, sha1($signature));
+        return sprintf('%s:%s:%s', $this->prefix, $this->translator, sha1($signature));
     }
 }

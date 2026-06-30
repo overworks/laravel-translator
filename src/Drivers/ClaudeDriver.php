@@ -18,7 +18,7 @@ use RuntimeException;
  * model to return a JSON object so every input maps to exactly one output,
  * in order (the Messages API has no native JSON mode).
  */
-class AnthropicTranslator implements Translator
+class ClaudeDriver implements Translator
 {
     /**
      * Default token ceiling for a response when none is given in options.
@@ -29,13 +29,13 @@ class AnthropicTranslator implements Translator
      * @param  ClientContract  $client  Configured with an Anthropic API key.
      * @param  string  $model    Claude model identifier.
      * @param  array<string, mixed>  $options  Defaults: temperature, max_tokens, system_prompt.
-     * @param  string  $name     Driver name reported on results.
+     * @param  string  $name     Translator name reported on results.
      */
     public function __construct(
         protected ClientContract $client,
         protected string $model,
         protected array $options = [],
-        protected string $name = 'anthropic',
+        protected string $name = 'claude',
     ) {
     }
 
@@ -56,7 +56,7 @@ class AnthropicTranslator implements Translator
         return new TranslationResult(
             text: trim($this->textFrom($response)),
             targetLang: $targetLang,
-            driver: $this->name,
+            translator: $this->name,
             detectedSourceLang: $sourceLang,
         );
     }
@@ -87,7 +87,7 @@ class AnthropicTranslator implements Translator
             fn (string $translation): TranslationResult => new TranslationResult(
                 text: trim($translation),
                 targetLang: $targetLang,
-                driver: $this->name,
+                translator: $this->name,
                 detectedSourceLang: $sourceLang,
             ),
             $translations,

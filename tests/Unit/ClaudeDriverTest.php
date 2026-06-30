@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Anthropic\Resources\Messages;
 use Anthropic\Responses\Messages\CreateResponse;
 use Anthropic\Testing\ClientFake;
-use Minhyung\LaravelTranslator\Drivers\AnthropicTranslator;
+use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -24,12 +24,12 @@ function fakeAnthropic(string ...$contents): ClientFake
 it('translates a single text and sends model, system, and max_tokens', function () {
     $client = fakeAnthropic('안녕하세요');
 
-    $result = (new AnthropicTranslator($client, 'claude-3-5-sonnet-latest'))
+    $result = (new ClaudeDriver($client, 'claude-3-5-sonnet-latest'))
         ->translate('Hello', 'ko', 'en');
 
     expect($result)->toBeInstanceOf(TranslationResult::class)
         ->and($result->text)->toBe('안녕하세요')
-        ->and($result->driver)->toBe('anthropic')
+        ->and($result->translator)->toBe('claude')
         ->and($result->detectedSourceLang)->toBe('en');
 
     $client->assertSent(Messages::class, function (string $method, array $params): bool {
@@ -51,14 +51,14 @@ it('concatenates multiple text blocks', function () {
         ]),
     ]);
 
-    expect((new AnthropicTranslator($client, 'm'))->translate('Hello', 'ko')->text)
+    expect((new ClaudeDriver($client, 'm'))->translate('Hello', 'ko')->text)
         ->toBe('안녕하세요');
 });
 
 it('translates a batch from a JSON object, preserving keys and order', function () {
     $client = fakeAnthropic('{"translations": ["안녕", "세계"]}');
 
-    $results = (new AnthropicTranslator($client, 'm'))
+    $results = (new ClaudeDriver($client, 'm'))
         ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko');
 
     expect($results)->toHaveKeys(['x', 'y'])
@@ -69,7 +69,7 @@ it('translates a batch from a JSON object, preserving keys and order', function 
 it('tolerates a JSON code fence around the batch response', function () {
     $client = fakeAnthropic("```json\n{\"translations\": [\"안녕\"]}\n```");
 
-    $results = (new AnthropicTranslator($client, 'm'))->translateBatch(['x' => 'Hello'], 'ko');
+    $results = (new ClaudeDriver($client, 'm'))->translateBatch(['x' => 'Hello'], 'ko');
 
     expect($results['x']->text)->toBe('안녕');
 });
@@ -77,7 +77,7 @@ it('tolerates a JSON code fence around the batch response', function () {
 it('throws when the batch count does not match the input', function () {
     $client = fakeAnthropic('{"translations": ["안녕"]}');
 
-    expect(fn () => (new AnthropicTranslator($client, 'm'))
+    expect(fn () => (new ClaudeDriver($client, 'm'))
         ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko'))
         ->toThrow(RuntimeException::class);
 });
@@ -85,7 +85,7 @@ it('throws when the batch count does not match the input', function () {
 it('passes temperature and max_tokens options through', function () {
     $client = fakeAnthropic('translated');
 
-    (new AnthropicTranslator($client, 'm', ['temperature' => 0.2]))
+    (new ClaudeDriver($client, 'm', ['temperature' => 0.2]))
         ->translate('Hello', 'ko', null, ['max_tokens' => 256]);
 
     $client->assertSent(Messages::class, function (string $method, array $params): bool {
@@ -96,7 +96,7 @@ it('passes temperature and max_tokens options through', function () {
 it('returns an empty array for an empty batch without calling the API', function () {
     $client = new ClientFake();
 
-    expect((new AnthropicTranslator($client, 'm'))->translateBatch([], 'ko'))->toBe([]);
+    expect((new ClaudeDriver($client, 'm'))->translateBatch([], 'ko'))->toBe([]);
 
     $client->assertNothingSent();
 });

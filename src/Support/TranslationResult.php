@@ -10,14 +10,14 @@ use Stringable;
  * Normalized, immutable result of a single text translation.
  *
  * Each driver maps its provider-specific response into this shape so callers
- * get a consistent object regardless of which translation service was used.
+ * get a consistent object regardless of which translator was used.
  */
 final readonly class TranslationResult implements Stringable
 {
     public function __construct(
         public string $text,
         public string $targetLang,
-        public string $driver,
+        public string $translator,
         public ?string $detectedSourceLang = null,
         public ?int $billedCharacters = null,
     ) {
@@ -27,7 +27,7 @@ final readonly class TranslationResult implements Stringable
      * @param array{
      *     text: string,
      *     targetLang: string,
-     *     driver: string,
+     *     translator: string,
      *     detectedSourceLang?: string|null,
      *     billedCharacters?: int|null
      * } $data
@@ -37,7 +37,7 @@ final readonly class TranslationResult implements Stringable
         return new self(
             text: $data['text'],
             targetLang: $data['targetLang'],
-            driver: $data['driver'],
+            translator: $data['translator'],
             detectedSourceLang: $data['detectedSourceLang'] ?? null,
             billedCharacters: $data['billedCharacters'] ?? null,
         );
@@ -47,7 +47,7 @@ final readonly class TranslationResult implements Stringable
      * @return array{
      *     text: string,
      *     targetLang: string,
-     *     driver: string,
+     *     translator: string,
      *     detectedSourceLang: string|null,
      *     billedCharacters: int|null
      * }
@@ -57,7 +57,7 @@ final readonly class TranslationResult implements Stringable
         return [
             'text' => $this->text,
             'targetLang' => $this->targetLang,
-            'driver' => $this->driver,
+            'translator' => $this->translator,
             'detectedSourceLang' => $this->detectedSourceLang,
             'billedCharacters' => $this->billedCharacters,
         ];

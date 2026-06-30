@@ -5,200 +5,244 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator;
 
 use Anthropic\Factory as AnthropicFactory;
+use Closure;
 use DeepL\DeepLClient;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Support\Manager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Minhyung\LaravelTranslator\Contracts\Translator;
-use Minhyung\LaravelTranslator\Drivers\AnthropicTranslator;
 use Minhyung\LaravelTranslator\Drivers\CachingTranslator;
-use Minhyung\LaravelTranslator\Drivers\DeeplTranslator;
-use Minhyung\LaravelTranslator\Drivers\FallbackTranslator;
-use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
-use Minhyung\LaravelTranslator\Drivers\OpenAiCompatibleTranslator;
+use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
+use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
+use Minhyung\LaravelTranslator\Drivers\FallbackDriver;
+use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
+use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use OpenAI\Factory as OpenAiFactory;
 use Psr\Log\LoggerInterface;
 
 /**
- * Resolves translation drivers and (optionally) wraps them with caching.
+ * Resolves named translators from config and (optionally) wraps them with
+ * caching.
+ *
+ * Modeled on Laravel's FilesystemManager: each entry under
+ * `translator.translators` is a named instance selected with translator(), and
+ * its "driver" key picks the implementation (deepl, google, claude, openai,
+ * fallback, or a custom one registered via extend()).
  *
  * @mixin \Minhyung\LaravelTranslator\Contracts\Translator
  */
-class TranslatorManager extends Manager
+class TranslatorManager
 {
     /**
-     * Well-known providers that speak the OpenAI chat-completions schema,
-     * mapped to their default base URI. A driver entry may override the URI
-     * with its own "base_uri"; an unlisted name needs an explicit "base_uri".
+     * Resolved translators, memoized by name.
      *
-     * @var array<string, string>
+     * @var array<string, Translator>
      */
-    protected const OPENAI_COMPATIBLE_PRESETS = [
-        'openai' => 'https://api.openai.com/v1',
-        'deepseek' => 'https://api.deepseek.com/v1',
-        'groq' => 'https://api.groq.com/openai/v1',
-        'mistral' => 'https://api.mistral.ai/v1',
-        'xai' => 'https://api.x.ai/v1',
-        'gemini' => 'https://generativelanguage.googleapis.com/v1beta/openai',
-        'openrouter' => 'https://openrouter.ai/api/v1',
-        'ollama' => 'http://localhost:11434/v1',
-    ];
+    protected array $translators = [];
 
-    public function getDefaultDriver()
+    /**
+     * Custom driver creators registered via extend(), keyed by driver name.
+     *
+     * @var array<string, Closure>
+     */
+    protected array $customCreators = [];
+
+    public function __construct(protected Container $container)
+    {
+    }
+
+    /**
+     * Get a translator instance by name (the default when omitted).
+     */
+    public function translator(?string $name = null): Translator
+    {
+        $name ??= $this->getDefaultTranslator();
+
+        return $this->translators[$name] ??= $this->resolve($name);
+    }
+
+    /**
+     * The default translator name.
+     */
+    public function getDefaultTranslator(): string
     {
         return $this->config()->get('translator.default', 'deepl');
     }
 
-    protected function createDeeplDriver(): Translator
+    /**
+     * Set the default translator name at runtime.
+     */
+    public function setDefaultTranslator(string $name): void
     {
-        $key = $this->config()->get('translator.drivers.deepl.key');
-
-        if (empty($key)) {
-            throw new InvalidArgumentException(
-                'The DeepL driver requires an auth key. Set DEEPL_AUTH_KEY or translator.drivers.deepl.key.'
-            );
-        }
-
-        return new DeeplTranslator(new DeepLClient($key));
-    }
-
-    protected function createGoogleDriver(): Translator
-    {
-        $key = $this->config()->get('translator.drivers.google.key');
-
-        if (empty($key)) {
-            throw new InvalidArgumentException(
-                'The Google driver requires an API key. Set GOOGLE_TRANSLATE_KEY or translator.drivers.google.key.'
-            );
-        }
-
-        return new GoogleTranslator($this->container->make(HttpFactory::class), $key);
+        $this->config()->set('translator.default', $name);
     }
 
     /**
-     * Native Claude driver talking to the Anthropic Messages API directly.
+     * Register a custom driver creator.
+     *
+     * The callback receives ($container, $name, $config) and must return a
+     * Translator. Reference it from config with `'driver' => '<driver>'`.
      */
-    protected function createAnthropicDriver(): Translator
+    public function extend(string $driver, Closure $callback): static
     {
-        $config = $this->config()->get('translator.drivers.anthropic', []);
-        $key = $config['key'] ?? null;
-        $model = $config['model'] ?? null;
+        $this->customCreators[$driver] = $callback;
 
-        if (empty($key)) {
-            throw new InvalidArgumentException(
-                'The Anthropic driver requires an API key. Set ANTHROPIC_API_KEY or translator.drivers.anthropic.key.'
-            );
-        }
-
-        if (empty($model)) {
-            throw new InvalidArgumentException(
-                'The Anthropic driver requires a model. Set translator.drivers.anthropic.model.'
-            );
-        }
-
-        $client = (new AnthropicFactory())->withApiKey($key)->make();
-
-        return new AnthropicTranslator($client, $model, $config['options'] ?? [], 'anthropic');
+        return $this;
     }
 
     /**
-     * Build a driver for any OpenAI-compatible chat-completions endpoint,
-     * talking to it directly through openai-php/client. The base URI comes
-     * from the entry's "base_uri", falling back to a built-in preset for
-     * well-known providers; "key" and optional "headers" configure the client.
+     * Resolve a fresh translator from its config entry.
      */
-    protected function buildOpenAiCompatibleDriver(string $name): Translator
+    protected function resolve(string $name): Translator
     {
-        $config = $this->config()->get("translator.drivers.{$name}", []);
+        $config = $this->getConfig($name);
 
-        if (! is_array($config)) {
-            $config = [];
+        if ($config === null) {
+            throw new InvalidArgumentException("Translator [{$name}] is not defined.");
         }
 
-        $model = $config['model'] ?? null;
+        if (! isset($config['driver'])) {
+            throw new InvalidArgumentException("Translator [{$name}] does not specify a driver.");
+        }
 
-        if (empty($model)) {
+        $driver = $config['driver'];
+
+        $translator = isset($this->customCreators[$driver])
+            ? ($this->customCreators[$driver])($this->container, $name, $config)
+            : $this->callBuiltinCreator($name, $driver, $config);
+
+        return $this->wrapWithCache($name, $translator);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function callBuiltinCreator(string $name, string $driver, array $config): Translator
+    {
+        $method = 'create' . Str::studly($driver) . 'Driver';
+
+        if (! method_exists($this, $method)) {
             throw new InvalidArgumentException(
-                "The [{$name}] driver requires a model. Set translator.drivers.{$name}.model."
+                "Driver [{$driver}] for translator [{$name}] is not supported."
             );
         }
 
-        $baseUri = $config['base_uri'] ?? static::OPENAI_COMPATIBLE_PRESETS[$name] ?? null;
+        return $this->{$method}($name, $config);
+    }
 
-        if (empty($baseUri)) {
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createDeeplDriver(string $name, array $config): Translator
+    {
+        if (empty($config['key'])) {
             throw new InvalidArgumentException(
-                "The [{$name}] driver is not a known provider. Set translator.drivers.{$name}.base_uri "
-                . 'to its OpenAI-compatible endpoint.'
+                "The [{$name}] translator requires a DeepL auth key. Set translator.translators.{$name}.key."
+            );
+        }
+
+        return new DeeplDriver(new DeepLClient($config['key']), $name);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createGoogleDriver(string $name, array $config): Translator
+    {
+        if (empty($config['key'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires a Google API key. Set translator.translators.{$name}.key."
+            );
+        }
+
+        return new GoogleDriver($this->container->make(HttpFactory::class), $config['key'], $name);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createClaudeDriver(string $name, array $config): Translator
+    {
+        if (empty($config['key'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires an Anthropic API key. Set translator.translators.{$name}.key."
+            );
+        }
+
+        if (empty($config['model'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires a model. Set translator.translators.{$name}.model."
+            );
+        }
+
+        $client = (new AnthropicFactory())->withApiKey($config['key'])->make();
+
+        return new ClaudeDriver($client, $config['model'], $config['options'] ?? [], $name);
+    }
+
+    /**
+     * OpenAI and any OpenAI-compatible endpoint. The base URI defaults to the
+     * OpenAI API and can be overridden with "base_url" for compatible providers
+     * (DeepSeek, Gemini, Groq, self-hosted gateways, ...).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function createOpenaiDriver(string $name, array $config): Translator
+    {
+        if (empty($config['model'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires a model. Set translator.translators.{$name}.model."
             );
         }
 
         $factory = (new OpenAiFactory())
-            ->withBaseUri($baseUri)
+            ->withBaseUri($config['base_url'] ?? 'https://api.openai.com/v1')
             ->withApiKey((string) ($config['key'] ?? ''));
 
         foreach ($config['headers'] ?? [] as $header => $value) {
             $factory->withHttpHeader($header, $value);
         }
 
-        return new OpenAiCompatibleTranslator(
-            $factory->make(),
-            $model,
-            $config['options'] ?? [],
-            $name,
-        );
+        return new OpenAiDriver($factory->make(), $config['model'], $config['options'] ?? [], $name);
     }
 
-    protected function createFallbackDriver(): Translator
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    protected function createFallbackDriver(string $name, array $config): Translator
     {
-        $names = $this->config()->get('translator.drivers.fallback.drivers', []);
+        $names = $config['translators'] ?? [];
 
         if (! is_array($names) || $names === []) {
             throw new InvalidArgumentException(
-                'The fallback driver requires a non-empty translator.drivers.fallback.drivers list.'
+                "The [{$name}] translator requires a non-empty translator.translators.{$name}.translators list."
             );
         }
 
         $factories = [];
 
-        foreach ($names as $name) {
-            if ($name === 'fallback') {
-                throw new InvalidArgumentException('The fallback driver cannot reference itself.');
+        foreach ($names as $child) {
+            if ($child === $name) {
+                throw new InvalidArgumentException("The [{$name}] fallback translator cannot reference itself.");
             }
 
-            // Resolve each child lazily through driver() (so it gets its own
+            // Resolve each child lazily through translator() (so it gets its own
             // caching) only when it is actually reached. This prevents a child
             // that cannot be constructed from breaking the whole chain.
-            $factories[$name] = fn (): Translator => $this->driver($name);
+            $factories[$child] = fn (): Translator => $this->translator($child);
         }
 
-        return new FallbackTranslator($factories, $this->container->make(LoggerInterface::class));
+        return new FallbackDriver($factories, $this->container->make(LoggerInterface::class));
     }
 
-    /**
-     * Resolve a driver and wrap it with caching when enabled.
-     */
-    protected function createDriver($driver)
+    protected function wrapWithCache(string $name, Translator $translator): Translator
     {
-        $driver = (string) $driver;
-
-        // Built-in drivers (deepl, google, anthropic, fallback) and custom
-        // extend() creators win first; any other name is treated as an
-        // OpenAI-compatible endpoint (preset or explicit "base_uri").
-        $resolved = isset($this->customCreators[$driver]) || method_exists($this, 'create' . Str::studly($driver) . 'Driver')
-            ? parent::createDriver($driver)
-            : $this->buildOpenAiCompatibleDriver($driver);
-
-        return $this->wrapWithCache($driver, $resolved);
-    }
-
-    protected function wrapWithCache(string $driver, Translator $translator): Translator
-    {
-        // The fallback driver's children are already cached individually;
-        // caching the composite again would mask provider recovery.
-        if ($translator instanceof FallbackTranslator) {
+        // A fallback's children are already cached individually; caching the
+        // composite again would mask provider recovery.
+        if ($translator instanceof FallbackDriver) {
             return $translator;
         }
 
@@ -213,14 +257,32 @@ class TranslatorManager extends Manager
         return new CachingTranslator(
             inner: $translator,
             cache: $store,
-            driver: $driver,
+            translator: $name,
             ttl: $cache['ttl'] ?? null,
             prefix: $cache['prefix'] ?? 'translator',
         );
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function getConfig(string $name): ?array
+    {
+        return $this->config()->get("translator.translators.{$name}");
+    }
+
     protected function config(): Config
     {
         return $this->container->make(Config::class);
+    }
+
+    /**
+     * Forward facade-style calls (translate, translateBatch) to the default translator.
+     *
+     * @param  array<int, mixed>  $parameters
+     */
+    public function __call(string $method, array $parameters): mixed
+    {
+        return $this->translator()->{$method}(...$parameters);
     }
 }

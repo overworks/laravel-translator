@@ -14,11 +14,12 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
  * Uses the simple REST endpoint authenticated with an API key, so no
  * service-account credentials or gRPC are required.
  */
-class GoogleTranslator implements Translator
+class GoogleDriver implements Translator
 {
     public function __construct(
         protected HttpFactory $http,
         protected string $key,
+        protected string $name = 'google',
         protected string $endpoint = 'https://translation.googleapis.com/language/translate/v2',
     ) {
     }
@@ -64,7 +65,7 @@ class GoogleTranslator implements Translator
             fn (array $translation): TranslationResult => new TranslationResult(
                 text: $this->decode($translation['translatedText'] ?? '', $format),
                 targetLang: $targetLang,
-                driver: 'google',
+                translator: $this->name,
                 detectedSourceLang: $sourceLang ?? ($translation['detectedSourceLanguage'] ?? null),
             ),
             $translations,

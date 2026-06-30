@@ -18,8 +18,8 @@ class TranslatorServiceProvider extends ServiceProvider implements DeferrablePro
         // for its own localization translator (the Lang facade).
         $this->app->singleton(TranslatorManager::class, fn ($app) => new TranslatorManager($app));
 
-        // Resolve the contract to the default driver for clean dependency injection.
-        $this->app->bind(Translator::class, fn ($app) => $app->make(TranslatorManager::class)->driver());
+        // Resolve the contract to the default translator for clean dependency injection.
+        $this->app->bind(Translator::class, fn ($app) => $app->make(TranslatorManager::class)->translator());
     }
 
     public function boot(): void

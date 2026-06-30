@@ -12,24 +12,24 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Tries an ordered list of drivers, falling back to the next one whenever a
- * driver throws, so a single provider outage doesn't break translation.
+ * Tries an ordered list of translators, falling back to the next one whenever
+ * one throws, so a single provider outage doesn't break translation.
  *
- * Drivers are passed as lazy factories and resolved only when reached, so a
- * later driver that fails to even construct (e.g. missing credentials) never
- * prevents an earlier, healthy driver from running.
+ * Translators are passed as lazy factories and resolved only when reached, so a
+ * later one that fails to even construct (e.g. missing credentials) never
+ * prevents an earlier, healthy translator from running.
  */
-class FallbackTranslator implements Translator
+class FallbackDriver implements Translator
 {
     /**
-     * Successfully constructed drivers, memoized by name.
+     * Successfully constructed translators, memoized by name.
      *
      * @var array<string, Translator>
      */
     protected array $resolved = [];
 
     /**
-     * @param  array<string, callable(): Translator>  $factories  Ordered, keyed by driver name.
+     * @param  array<string, callable(): Translator>  $factories  Ordered, keyed by translator name.
      */
     public function __construct(
         protected array $factories,

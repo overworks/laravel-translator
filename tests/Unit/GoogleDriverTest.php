@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Factory;
-use Minhyung\LaravelTranslator\Drivers\GoogleTranslator;
+use Minhyung\LaravelTranslator\Drivers\GoogleDriver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 
 /**
@@ -26,11 +26,11 @@ it('maps a single v2 result and calls the API-key endpoint', function () {
         ['translatedText' => '안녕하세요', 'detectedSourceLanguage' => 'en'],
     ]);
 
-    $result = (new GoogleTranslator($http, 'test-key'))->translate('Hello', 'ko');
+    $result = (new GoogleDriver($http, 'test-key'))->translate('Hello', 'ko');
 
     expect($result)->toBeInstanceOf(TranslationResult::class)
         ->and($result->text)->toBe('안녕하세요')
-        ->and($result->driver)->toBe('google')
+        ->and($result->translator)->toBe('google')
         ->and($result->detectedSourceLang)->toBe('en');
 
     $http->assertSent(function ($request) {
@@ -47,7 +47,7 @@ it('translates a batch preserving keys and echoes explicit source language', fun
         ['translatedText' => '세계'],
     ]);
 
-    $results = (new GoogleTranslator($http, 'k'))
+    $results = (new GoogleDriver($http, 'k'))
         ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko', 'en');
 
     expect($results)->toHaveKeys(['x', 'y'])
@@ -59,7 +59,7 @@ it('translates a batch preserving keys and echoes explicit source language', fun
 it('decodes HTML entities in plain-text results', function () {
     $http = googleHttp([['translatedText' => 'It&#39;s a &quot;test&quot;']]);
 
-    expect((new GoogleTranslator($http, 'k'))->translate('x', 'en')->text)
+    expect((new GoogleDriver($http, 'k'))->translate('x', 'en')->text)
         ->toBe('It\'s a "test"');
 });
 
@@ -67,7 +67,7 @@ it('returns an empty array for an empty batch without calling the API', function
     $http = new Factory();
     $http->fake();
 
-    expect((new GoogleTranslator($http, 'k'))->translateBatch([], 'ko'))->toBe([]);
+    expect((new GoogleDriver($http, 'k'))->translateBatch([], 'ko'))->toBe([]);
 
     $http->assertNothingSent();
 });

@@ -20,19 +20,19 @@ use RuntimeException;
  * Single translations use a plain chat completion; batch translations request a
  * JSON object so every input maps to exactly one output, in order.
  */
-class OpenAiCompatibleTranslator implements Translator
+class OpenAiDriver implements Translator
 {
     /**
      * @param  ClientContract  $client  Configured with the endpoint's base URI and key.
      * @param  string  $model    Model identifier the endpoint exposes.
      * @param  array<string, mixed>  $options  Defaults: temperature, max_tokens, system_prompt.
-     * @param  string  $name     Driver name reported on results.
+     * @param  string  $name     Translator name reported on results.
      */
     public function __construct(
         protected ClientContract $client,
         protected string $model,
         protected array $options = [],
-        protected string $name = 'openai-compatible',
+        protected string $name = 'openai',
     ) {
     }
 
@@ -55,7 +55,7 @@ class OpenAiCompatibleTranslator implements Translator
         return new TranslationResult(
             text: trim((string) ($response->choices[0]->message->content ?? '')),
             targetLang: $targetLang,
-            driver: $this->name,
+            translator: $this->name,
             detectedSourceLang: $sourceLang,
         );
     }
@@ -92,7 +92,7 @@ class OpenAiCompatibleTranslator implements Translator
             fn (string $translation): TranslationResult => new TranslationResult(
                 text: trim($translation),
                 targetLang: $targetLang,
-                driver: $this->name,
+                translator: $this->name,
                 detectedSourceLang: $sourceLang,
             ),
             $translations,

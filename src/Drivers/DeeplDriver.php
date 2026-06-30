@@ -12,10 +12,11 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
 /**
  * DeepL driver backed by the official deeplcom/deepl-php client.
  */
-class DeeplTranslator implements Translator
+class DeeplDriver implements Translator
 {
     public function __construct(
         protected DeepLClient $client,
+        protected string $name = 'deepl',
     ) {
     }
 
@@ -60,7 +61,7 @@ class DeeplTranslator implements Translator
         return new TranslationResult(
             text: $result->text,
             targetLang: $targetLang,
-            driver: 'deepl',
+            translator: $this->name,
             detectedSourceLang: $result->detectedSourceLang,
             billedCharacters: $result->billedCharacters,
         );

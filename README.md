@@ -8,14 +8,15 @@
 **English** | [한국어](README.ko.md)
 
 A Laravel package that puts multiple translation services (DeepL, Google Cloud Translation, LLMs, ...) behind **one unified API**.
-It is built on Laravel's standard Manager/Driver pattern, so drivers are easy to add or swap, and it ships with translation-result caching out of the box.
+It follows the same shape as Laravel's `config/filesystems.php`: you define named **translators**, and each one picks an implementation with a **`driver`** key. Translators are selected with `Translator::translator('name')`, just like `Storage::disk('name')`. Result caching is built in.
 
-Supported drivers:
+Built-in drivers:
 
-- **DeepL**
-- **Google Cloud Translation (v2)**
-- **Anthropic / Claude** — native Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
-- **OpenAI-compatible endpoints** via [openai-php/client](https://github.com/openai-php/client) — well-known providers (OpenAI, Gemini, DeepSeek, Groq, Mistral, xAI, OpenRouter, Ollama) work by name; any other endpoint works with a `base_uri`.
+- **`deepl`** — DeepL
+- **`google`** — Google Cloud Translation (v2)
+- **`claude`** — native Anthropic Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
+- **`openai`** — OpenAI and any OpenAI-compatible endpoint (DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, self-hosted gateways) via [openai-php/client](https://github.com/openai-php/client), pointed with `base_url`
+- **`fallback`** — try several translators in order
 
 No heavyweight LLM abstraction layer — each driver talks to its provider's SDK/API directly.
 
@@ -43,7 +44,7 @@ php artisan vendor:publish --tag=translator-config
 In `config/translator.php` or your `.env`:
 
 ```dotenv
-TRANSLATOR_DRIVER=deepl        # default driver: deepl | google | anthropic | openai | ...
+TRANSLATOR_DEFAULT=deepl        # default translator name: deepl | google | claude | openai | ...
 
 # DeepL
 DEEPL_AUTH_KEY=xxxxxxxx:fx
@@ -51,17 +52,16 @@ DEEPL_AUTH_KEY=xxxxxxxx:fx
 # Google Cloud Translation (v2, API key)
 GOOGLE_TRANSLATE_KEY=AIza...
 
-# Anthropic / Claude (native)
+# Claude (native)
 ANTHROPIC_API_KEY=sk-ant-...
-TRANSLATOR_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+TRANSLATOR_CLAUDE_MODEL=claude-3-5-sonnet-latest
 
-# OpenAI-compatible providers — API key + optional model override
+# OpenAI + compatible providers — API key + optional model override
 OPENAI_API_KEY=sk-...
 TRANSLATOR_OPENAI_MODEL=gpt-4o-mini
 GEMINI_API_KEY=AIza...
 TRANSLATOR_GEMINI_MODEL=gemini-2.0-flash
 DEEPSEEK_API_KEY=sk-...
-OPENROUTER_API_KEY=sk-or-...
 
 # Caching
 TRANSLATOR_CACHE=true
@@ -71,45 +71,31 @@ TRANSLATOR_CACHE_TTL=86400       # seconds; empty = cache forever
 
 > Batch translation asks the model for a JSON object with one in-order result per input, and throws if the counts don't match.
 
-### LLM providers (register as many as you like)
+### Defining translators
 
-Every name that is **not** `deepl`, `google`, `anthropic`, or `fallback` is treated as an **OpenAI-compatible** endpoint.
-Well-known providers resolve to a built-in base URI automatically — just give a `key` and a `model`:
-
-```php
-// config/translator.php
-'drivers' => [
-    'openai'     => ['key' => env('OPENAI_API_KEY'),     'model' => 'gpt-4o-mini'],
-    'gemini'     => ['key' => env('GEMINI_API_KEY'),     'model' => 'gemini-2.0-flash'],
-    'deepseek'   => ['key' => env('DEEPSEEK_API_KEY'),   'model' => 'deepseek-chat'],
-    'openrouter' => ['key' => env('OPENROUTER_API_KEY'), 'model' => 'openai/gpt-4o-mini'],
-    'ollama'     => ['model' => 'llama3.2'], // self-hosted, no key
-],
-```
-
-Presets cover `openai`, `gemini`, `deepseek`, `groq`, `mistral`, `xai`, `openrouter`, and `ollama`.
-Claude is a first-class **native** driver (`anthropic`), so it takes a `key` and `model` too:
-
-```php
-'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
-```
-
-```php
-Translator::driver('anthropic')->translate('Hello', 'ko'); // result's ->driver is "anthropic"
-```
-
-### Custom OpenAI-compatible endpoints
-
-For an endpoint that is not preset above — self-hosted gateways, proxies, or vendors that expose the OpenAI chat schema — give the driver entry a **`base_uri`**.
-Register as many as you like under different keys.
+Each entry under `translators` is a named instance whose `driver` picks the implementation.
+Several names may share one driver — e.g. DeepSeek and Gemini both use the `openai` driver with their own `base_url`:
 
 ```php
 // config/translator.php
-'drivers' => [
-    'custom' => [
-        'base_uri' => 'https://my-gateway.test/v1',
-        'key'      => env('TRANSLATOR_CUSTOM_KEY'),
-        'model'    => 'my-model',
+'translators' => [
+    'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
+    'google' => ['driver' => 'google', 'key' => env('GOOGLE_TRANSLATE_KEY')],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
+    'openai' => ['driver' => 'openai', 'key' => env('OPENAI_API_KEY'), 'model' => 'gpt-4o-mini'],
+
+    // OpenAI-compatible endpoints: same driver, different base_url
+    'gemini' => [
+        'driver'   => 'openai',
+        'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai',
+        'key'      => env('GEMINI_API_KEY'),
+        'model'    => 'gemini-2.0-flash',
+    ],
+    'deepseek' => [
+        'driver'   => 'openai',
+        'base_url' => 'https://api.deepseek.com/v1',
+        'key'      => env('DEEPSEEK_API_KEY'),
+        'model'    => 'deepseek-chat',
 
         // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
         // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
@@ -117,8 +103,10 @@ Register as many as you like under different keys.
 ],
 ```
 
+Common `base_url`s for the `openai` driver: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
+
 ```php
-Translator::driver('custom')->translate('Hello', 'ko'); // result's ->driver is "custom"
+Translator::translator('claude')->translate('Hello', 'ko'); // result's ->translator is "claude"
 ```
 
 ## Usage
@@ -132,7 +120,7 @@ $result = Translator::translate('Hello, world!', 'ko');
 
 $result->text;               // "안녕하세요, 여러분!"
 $result->detectedSourceLang; // "en"
-$result->driver;             // "deepl"
+$result->translator;         // "deepl"
 (string) $result;            // the translated text (Stringable)
 ```
 
@@ -154,13 +142,13 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
-### Selecting a driver
+### Selecting a translator
 
 ```php
-Translator::driver('google')->translate('Hello', 'ko');
+Translator::translator('google')->translate('Hello', 'ko');
 
-// LLM driver — options can be passed per call
-Translator::driver('openai')->translate('Hello', 'ko', 'en', [
+// Per-call options
+Translator::translator('openai')->translate('Hello', 'ko', 'en', [
     'temperature'   => 0.0,
     'system_prompt' => 'Translate from {source} into {target}. Keep it formal.',
 ]);
@@ -168,7 +156,7 @@ Translator::driver('openai')->translate('Hello', 'ko', 'en', [
 
 ### Dependency injection
 
-The `Translator` contract is bound to the default driver.
+The `Translator` contract is bound to the default translator.
 
 ```php
 use Minhyung\LaravelTranslator\Contracts\Translator;
@@ -178,47 +166,54 @@ public function __construct(private Translator $translator) {}
 
 ## Caching
 
-When `translator.cache.enabled` is on, every driver is wrapped in a `CachingTranslator`.
+When `translator.cache.enabled` is on, every translator is wrapped in a `CachingTranslator`.
 Identical inputs (text · source/target language · options) are served straight from the Laravel cache, cutting API calls and cost.
 For batch translation, only the **cache misses** are sent to the provider in a single call.
 
 ## Failover
 
-To automatically switch to the next provider when one fails, use the `fallback` driver.
-It tries each driver in the listed order and moves on to the next whenever a driver throws.
+To automatically switch to the next provider when one fails, define a translator with the `fallback` driver.
+It tries each listed translator in order and moves on to the next whenever one throws.
 
 ```php
 // config/translator.php
-'default' => 'fallback',
+'default' => 'safe',
 
-'drivers' => [
-    // Freely combine any providers
-    'anthropic' => ['key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
-    'gemini'    => ['key' => env('GEMINI_API_KEY'),    'model' => 'gemini-2.0-flash'],
+'translators' => [
+    'deepl'  => ['driver' => 'deepl',  'key' => env('DEEPL_AUTH_KEY')],
+    'claude' => ['driver' => 'claude', 'key' => env('ANTHROPIC_API_KEY'), 'model' => 'claude-3-5-sonnet-latest'],
 
-    'fallback' => [
-        'drivers' => ['deepl', 'anthropic', 'gemini'],
+    'safe' => [
+        'driver'      => 'fallback',
+        'translators' => ['deepl', 'claude'],
     ],
 ],
 ```
 
 ```php
-Translator::translate('Hello', 'ko'); // if deepl fails, try anthropic → gemini in order
+Translator::translate('Hello', 'ko'); // if deepl fails, try claude
 ```
 
-- Each child driver is **cached individually** (the `fallback` itself is not cached, to avoid double caching), and every fallback attempt is logged at `warning` level via a PSR logger.
-- If every driver fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per driver.
+- Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching), and every fallback attempt is logged at `warning` level via a PSR logger.
+- If every translator fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per translator.
 
 ## Extending with a custom driver
 
-Implement `Contracts\Translator` and register it on the manager.
+Implement `Contracts\Translator` and register the driver on the manager. The callback receives `($container, $name, $config)`; reference it from config with `'driver' => 'papago'`.
 
 ```php
 use Minhyung\LaravelTranslator\TranslatorManager;
 
-app(TranslatorManager::class)->extend('papago', function ($app) {
-    return new \App\Translation\PapagoTranslator(/* ... */);
+app(TranslatorManager::class)->extend('papago', function ($container, $name, $config) {
+    return new \App\Translation\PapagoTranslator($config['key'], $name);
 });
+```
+
+```php
+// config/translator.php
+'translators' => [
+    'papago' => ['driver' => 'papago', 'key' => env('PAPAGO_KEY')],
+],
 ```
 
 ## Testing

@@ -9,7 +9,7 @@ use Minhyung\LaravelTranslator\Support\TranslationResult;
 use Minhyung\LaravelTranslator\TranslatorManager;
 
 /**
- * @method static \Minhyung\LaravelTranslator\Contracts\Translator driver(string|null $name = null)
+ * @method static \Minhyung\LaravelTranslator\Contracts\Translator translator(string|null $name = null)
  * @method static TranslationResult translate(string $text, string $targetLang, string|null $sourceLang = null, array $options = [])
  * @method static array<array-key, TranslationResult> translateBatch(array $texts, string $targetLang, string|null $sourceLang = null, array $options = [])
  *

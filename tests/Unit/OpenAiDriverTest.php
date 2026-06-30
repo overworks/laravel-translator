@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Minhyung\LaravelTranslator\Drivers\OpenAiCompatibleTranslator;
+use Minhyung\LaravelTranslator\Drivers\OpenAiDriver;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use OpenAI\Resources\Chat;
 use OpenAI\Responses\Chat\CreateResponse;
@@ -26,12 +26,12 @@ function fakeOpenAi(string ...$contents): ClientFake
 it('translates a single text and sends the configured model', function () {
     $client = fakeOpenAi('안녕하세요');
 
-    $result = (new OpenAiCompatibleTranslator($client, 'my-model', name: 'custom'))
+    $result = (new OpenAiDriver($client, 'my-model', name: 'custom'))
         ->translate('Hello', 'ko', 'en');
 
     expect($result)->toBeInstanceOf(TranslationResult::class)
         ->and($result->text)->toBe('안녕하세요')
-        ->and($result->driver)->toBe('custom')
+        ->and($result->translator)->toBe('custom')
         ->and($result->detectedSourceLang)->toBe('en');
 
     $client->assertSent(Chat::class, function (string $method, array $params): bool {
@@ -44,7 +44,7 @@ it('translates a single text and sends the configured model', function () {
 it('translates a batch from a JSON object, preserving keys and order', function () {
     $client = fakeOpenAi('{"translations": ["안녕", "세계"]}');
 
-    $results = (new OpenAiCompatibleTranslator($client, 'm'))
+    $results = (new OpenAiDriver($client, 'm'))
         ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko');
 
     expect($results)->toHaveKeys(['x', 'y'])
@@ -60,7 +60,7 @@ it('translates a batch from a JSON object, preserving keys and order', function 
 it('throws when the batch count does not match the input', function () {
     $client = fakeOpenAi('{"translations": ["안녕"]}');
 
-    expect(fn () => (new OpenAiCompatibleTranslator($client, 'm'))
+    expect(fn () => (new OpenAiDriver($client, 'm'))
         ->translateBatch(['x' => 'Hello', 'y' => 'World'], 'ko'))
         ->toThrow(RuntimeException::class);
 });
@@ -68,7 +68,7 @@ it('throws when the batch count does not match the input', function () {
 it('passes temperature and max_tokens options through', function () {
     $client = fakeOpenAi('translated');
 
-    (new OpenAiCompatibleTranslator($client, 'm', ['temperature' => 0.2]))
+    (new OpenAiDriver($client, 'm', ['temperature' => 0.2]))
         ->translate('Hello', 'ko', null, ['max_tokens' => 256]);
 
     $client->assertSent(Chat::class, function (string $method, array $params): bool {
@@ -79,7 +79,7 @@ it('passes temperature and max_tokens options through', function () {
 it('returns an empty array for an empty batch without calling the API', function () {
     $client = new ClientFake();
 
-    expect((new OpenAiCompatibleTranslator($client, 'm'))->translateBatch([], 'ko'))->toBe([]);
+    expect((new OpenAiDriver($client, 'm'))->translateBatch([], 'ko'))->toBe([]);
 
     $client->assertNothingSent();
 });
