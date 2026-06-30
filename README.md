@@ -96,12 +96,17 @@ Several names may share one driver — e.g. DeepSeek and Gemini both use the `op
         'base_url' => 'https://api.deepseek.com/v1',
         'key'      => env('DEEPSEEK_API_KEY'),
         'model'    => 'deepseek-v4-flash',
+        'options'  => [
+            // DeepSeek V4 enables "thinking" by default; disable it for translation.
+            'extra_body' => ['thinking' => ['type' => 'disabled']],
+        ],
 
         // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
-        // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
     ],
 ],
 ```
+
+For the `openai` driver, `options` accepts `temperature`, `max_tokens`, `system_prompt`, and `extra_body` (arbitrary top-level request-body fields merged into the call, like the OpenAI SDK's `extra_body` — used above to turn off DeepSeek's thinking mode).
 
 Common `base_url`s for the `openai` driver: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
 

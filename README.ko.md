@@ -91,12 +91,17 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
         'base_url' => 'https://api.deepseek.com/v1',
         'key'      => env('DEEPSEEK_API_KEY'),
         'model'    => 'deepseek-v4-flash',
+        'options'  => [
+            // DeepSeek V4는 "thinking"이 기본 ON이라, 번역용으로 끕니다.
+            'extra_body' => ['thinking' => ['type' => 'disabled']],
+        ],
 
         // 'headers' => ['X-Tenant' => 'acme'], // 추가 HTTP 헤더
-        // 'options' => ['temperature' => 0.0], // temperature, max_tokens, system_prompt
     ],
 ],
 ```
+
+`openai` driver의 `options`는 `temperature`, `max_tokens`, `system_prompt`, 그리고 `extra_body`(OpenAI SDK의 `extra_body`처럼 요청 본문 최상위에 병합되는 임의 필드 — 위에서 DeepSeek thinking 모드를 끄는 데 사용)를 받습니다.
 
 `openai` driver용 주요 `base_url`: DeepSeek `https://api.deepseek.com/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai`, Groq `https://api.groq.com/openai/v1`, Mistral `https://api.mistral.ai/v1`, xAI `https://api.x.ai/v1`, OpenRouter `https://openrouter.ai/api/v1`, Ollama `http://localhost:11434/v1`.
 

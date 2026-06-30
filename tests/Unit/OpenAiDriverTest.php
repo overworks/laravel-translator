@@ -76,6 +76,17 @@ it('passes temperature and max_tokens options through', function () {
     });
 });
 
+it('merges extra_body fields into the request payload', function () {
+    $client = fakeOpenAi('translated');
+
+    (new OpenAiDriver($client, 'm', ['extra_body' => ['thinking' => ['type' => 'disabled']]]))
+        ->translate('Hello', 'ko');
+
+    $client->assertSent(Chat::class, function (string $method, array $params): bool {
+        return ($params['thinking']['type'] ?? null) === 'disabled';
+    });
+});
+
 it('returns an empty array for an empty batch without calling the API', function () {
     $client = new ClientFake();
 

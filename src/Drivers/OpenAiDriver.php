@@ -127,6 +127,13 @@ class OpenAiDriver implements Translator
             $payload['response_format'] = ['type' => 'json_object'];
         }
 
+        // Extra top-level request-body fields for provider-specific parameters
+        // (e.g. DeepSeek's `thinking` toggle), merged like the OpenAI SDK's
+        // `extra_body`.
+        if (! empty($options['extra_body']) && is_array($options['extra_body'])) {
+            $payload = array_merge($payload, $options['extra_body']);
+        }
+
         return $payload;
     }
 

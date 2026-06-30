@@ -84,8 +84,15 @@ return [
             'key' => env('DEEPSEEK_API_KEY'),
             'model' => env('TRANSLATOR_DEEPSEEK_MODEL', 'deepseek-v4-flash'),
 
+            'options' => [
+                // DeepSeek V4 enables "thinking" by default; translation does not
+                // need it, so disable it for faster, cheaper, predictable output.
+                'extra_body' => ['thinking' => ['type' => 'disabled']],
+
+                // 'temperature' => 0.0,
+            ],
+
             // 'headers' => ['X-Tenant' => 'acme'], // extra HTTP headers
-            // 'options' => ['temperature' => 0.0],
         ],
 
         // Failover: try each translator in order, falling back to the next one
