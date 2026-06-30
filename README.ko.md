@@ -11,6 +11,8 @@ config에 이름을 붙인 **translator**를 정의하고, 각 항목이 **`driv
 - **`google`** — Google Cloud Translation (기본 v2, `version`으로 v3/Advanced)
 - **`claude`** — 네이티브 Anthropic Messages API ([mozex/anthropic-php](https://github.com/mozex/anthropic-php) 기반)
 - **`openai`** — OpenAI 및 모든 OpenAI 호환 엔드포인트(DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, 사내 게이트웨이)를 `base_url`로 지정 ([openai-php/client](https://github.com/openai-php/client) 기반)
+- **`azure`** — Azure AI Translator (Translator REST API v3.0)
+- **`amazon`** — Amazon Translate ([aws/aws-sdk-php](https://github.com/aws/aws-sdk-php) 기반, 선택적 의존성)
 - **`libretranslate`** — [LibreTranslate](https://libretranslate.com) (무료·오픈소스, 셀프호스트 또는 호스팅)
 - **`fallback`** — 여러 translator를 순서대로 시도
 
@@ -58,6 +60,15 @@ TRANSLATOR_OPENAI_MODEL=gpt-5.4-mini
 GEMINI_API_KEY=AIza...
 TRANSLATOR_GEMINI_MODEL=gemini-3-flash-preview
 DEEPSEEK_API_KEY=sk-...
+
+# Azure AI Translator
+AZURE_TRANSLATOR_KEY=xxxxxxxx
+AZURE_TRANSLATOR_REGION=koreacentral   # 글로벌 키는 생략 가능
+
+# Amazon Translate (aws/aws-sdk-php 필요; key/secret 생략 시 AWS 자격 증명 체인 사용)
+AWS_DEFAULT_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
 
 # 캐싱
 TRANSLATOR_CACHE=true
@@ -126,6 +137,27 @@ TRANSLATOR_CACHE_TTL=86400       # 초 단위. 비우면 영구 캐시
 ],
 ```
 
+`azure` driver는 구독 `key`를 받습니다. 지역(regional)·멀티서비스 리소스는 `region`이 필요하며(글로벌·단일서비스 키는 생략 가능), 소버린 클라우드는 `endpoint`로 재정의합니다:
+
+```php
+'azure' => [
+    'driver' => 'azure',
+    'key'    => env('AZURE_TRANSLATOR_KEY'),
+    'region' => env('AZURE_TRANSLATOR_REGION'), // 예: "koreacentral"; 글로벌 키는 생략 가능
+],
+```
+
+`amazon` driver는 AWS SDK(`composer require aws/aws-sdk-php`)와 `region`이 필요합니다. `key`/`secret`을 생략하면 AWS 기본 자격 증명 체인(환경변수, `~/.aws`, IAM 인스턴스/태스크 역할 등)을 사용합니다:
+
+```php
+'amazon' => [
+    'driver' => 'amazon',
+    'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+    'key'    => env('AWS_ACCESS_KEY_ID'),     // 선택
+    'secret' => env('AWS_SECRET_ACCESS_KEY'), // 선택
+],
+```
+
 ```php
 Translator::via('claude')->translate('Hello', 'ko'); // 결과의 ->translator 는 "claude"
 ```
@@ -163,7 +195,7 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
-> LLM 드라이버(`claude`, `openai`)는 배치 번역 시 입력당 하나의 결과를 순서대로 담은 JSON 객체를 모델에 요청하며, 개수가 맞지 않으면 예외를 던집니다. `deepl`·`google`은 배치를 네이티브로 처리합니다.
+> LLM 드라이버(`claude`, `openai`)는 배치 번역 시 입력당 하나의 결과를 순서대로 담은 JSON 객체를 모델에 요청하며, 개수가 맞지 않으면 예외를 던집니다. `deepl`·`google`·`azure`·`libretranslate`는 배치를 네이티브로 처리하고, `amazon`(실시간 API가 한 번에 한 건)은 루프로 처리하되 순서와 키를 항상 보존합니다.
 
 ### 여러 언어로 한 번에
 
@@ -215,7 +247,7 @@ public function __construct(private Translator $translator) {}
 
 ## 언어 감지
 
-언어 감지를 지원하는 드라이버 — `google`(v2·v3)과 `libretranslate` — 는 `detect()`를 제공합니다:
+언어 감지를 지원하는 드라이버 — `google`(v2·v3), `azure`, `libretranslate` — 는 `detect()`를 제공합니다:
 
 ```php
 use Minhyung\LaravelTranslator\Facades\Translator;
@@ -231,7 +263,7 @@ $detection->confidence; // 0.98 (프로바이더가 제공하면 0–1)
 
 ### 지원 언어 목록
 
-언어 목록을 제공하는 드라이버 — `deepl`, `google`(v2·v3), `libretranslate` — 는 `languages()`를 제공합니다:
+언어 목록을 제공하는 드라이버 — `deepl`, `google`(v2·v3), `azure`, `amazon`, `libretranslate` — 는 `languages()`를 제공합니다:
 
 ```php
 foreach (Translator::via('deepl')->languages() as $language) {

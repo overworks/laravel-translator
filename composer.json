@@ -33,8 +33,12 @@
         "psr/log": "^3.0"
     },
     "require-dev": {
+        "aws/aws-sdk-php": "^3.0",
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^3.0|^4.0"
+    },
+    "suggest": {
+        "aws/aws-sdk-php": "Required to use the Amazon Translate driver (^3.0)."
     },
     "autoload": {
         "psr-4": {

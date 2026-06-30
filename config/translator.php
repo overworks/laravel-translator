@@ -114,6 +114,26 @@ return [
             'key' => env('LIBRETRANSLATE_API_KEY'),
         ],
 
+        // Azure AI Translator. A "region" is required for regional and
+        // multi-service resources (global/single-service keys may omit it).
+        'azure' => [
+            'driver' => 'azure',
+            'key' => env('AZURE_TRANSLATOR_KEY'),
+            'region' => env('AZURE_TRANSLATOR_REGION'),
+            // 'endpoint' => 'https://api.cognitive.microsofttranslator.com',
+        ],
+
+        // Amazon Translate (needs the AWS SDK: composer require aws/aws-sdk-php).
+        // Omit key/secret to use the AWS default credential chain (env vars,
+        // ~/.aws, IAM instance/task role, ...).
+        'amazon' => [
+            'driver' => 'amazon',
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            // 'token' => env('AWS_SESSION_TOKEN'),
+        ],
+
         // Failover: try each translator in order, falling back to the next one
         // whenever a translator throws. Set 'default' => 'fallback' to use it.
         'fallback' => [

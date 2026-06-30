@@ -16,6 +16,8 @@ Built-in drivers:
 - **`google`** — Google Cloud Translation (v2 by default; v3/Advanced via `version`)
 - **`claude`** — native Anthropic Messages API via [mozex/anthropic-php](https://github.com/mozex/anthropic-php)
 - **`openai`** — OpenAI and any OpenAI-compatible endpoint (DeepSeek, Gemini, Groq, Mistral, xAI, OpenRouter, Ollama, self-hosted gateways) via [openai-php/client](https://github.com/openai-php/client), pointed with `base_url`
+- **`azure`** — Azure AI Translator (Translator REST API v3.0)
+- **`amazon`** — Amazon Translate via [aws/aws-sdk-php](https://github.com/aws/aws-sdk-php) (optional dependency)
 - **`libretranslate`** — [LibreTranslate](https://libretranslate.com) (free/open-source, self-hosted or hosted)
 - **`fallback`** — try several translators in order
 
@@ -63,6 +65,15 @@ TRANSLATOR_OPENAI_MODEL=gpt-5.4-mini
 GEMINI_API_KEY=AIza...
 TRANSLATOR_GEMINI_MODEL=gemini-3-flash-preview
 DEEPSEEK_API_KEY=sk-...
+
+# Azure AI Translator
+AZURE_TRANSLATOR_KEY=xxxxxxxx
+AZURE_TRANSLATOR_REGION=koreacentral   # optional for global keys
+
+# Amazon Translate (needs aws/aws-sdk-php; omit key/secret to use the AWS credential chain)
+AWS_DEFAULT_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
 
 # Caching
 TRANSLATOR_CACHE=true
@@ -131,6 +142,27 @@ The `google` driver stays `google` for both API versions — pick with `version`
 ],
 ```
 
+The `azure` driver takes a subscription `key`. A `region` is required for regional and multi-service resources (global/single-service keys may omit it); override `endpoint` for sovereign clouds:
+
+```php
+'azure' => [
+    'driver' => 'azure',
+    'key'    => env('AZURE_TRANSLATOR_KEY'),
+    'region' => env('AZURE_TRANSLATOR_REGION'), // e.g. "koreacentral"; optional for global keys
+],
+```
+
+The `amazon` driver needs the AWS SDK — `composer require aws/aws-sdk-php` — and a `region`. Omit `key`/`secret` to use the AWS default credential chain (env vars, `~/.aws`, IAM instance/task role, ...):
+
+```php
+'amazon' => [
+    'driver' => 'amazon',
+    'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+    'key'    => env('AWS_ACCESS_KEY_ID'),     // optional
+    'secret' => env('AWS_SECRET_ACCESS_KEY'), // optional
+],
+```
+
 ```php
 Translator::via('claude')->translate('Hello', 'ko'); // result's ->translator is "claude"
 ```
@@ -168,7 +200,7 @@ $results['greeting']->text; // "안녕하세요"
 $results['farewell']->text; // "안녕히 가세요"
 ```
 
-> For LLM drivers (`claude`, `openai`), batch translation requests a single JSON object with one in-order result per input and throws if the counts don't match. `deepl` and `google` translate batches natively.
+> For LLM drivers (`claude`, `openai`), batch translation requests a single JSON object with one in-order result per input and throws if the counts don't match. `deepl`, `google`, `azure`, and `libretranslate` translate batches natively; `amazon` (whose real-time API is one text per call) loops, always preserving order and keys.
 
 ### Into several languages at once
 
@@ -220,7 +252,7 @@ public function __construct(private Translator $translator) {}
 
 ## Language detection
 
-Drivers that can detect a language — `google` (v2 and v3) and `libretranslate` — expose `detect()`:
+Drivers that can detect a language — `google` (v2 and v3), `azure`, and `libretranslate` — expose `detect()`:
 
 ```php
 use Minhyung\LaravelTranslator\Facades\Translator;
@@ -236,7 +268,7 @@ Detection flows through caching, retries, and fallback like translation does. Ca
 
 ### Supported languages
 
-Drivers that can enumerate their languages — `deepl`, `google` (v2 and v3), and `libretranslate` — expose `languages()`:
+Drivers that can enumerate their languages — `deepl`, `google` (v2 and v3), `azure`, `amazon`, and `libretranslate` — expose `languages()`:
 
 ```php
 foreach (Translator::via('deepl')->languages() as $language) {

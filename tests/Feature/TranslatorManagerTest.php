@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Drivers\AmazonTranslateDriver;
+use Minhyung\LaravelTranslator\Drivers\AzureTranslatorDriver;
 use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
@@ -152,6 +154,43 @@ it('resolves the LibreTranslate driver', function () {
 
     expect(app(TranslatorManager::class)->via('libretranslate')->driver())
         ->toBeInstanceOf(LibreTranslateDriver::class);
+});
+
+it('resolves the Azure driver', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.azure', [
+        'driver' => 'azure',
+        'key' => 'azure-key',
+        'region' => 'koreacentral',
+    ]);
+
+    expect(app(TranslatorManager::class)->via('azure')->driver())->toBeInstanceOf(AzureTranslatorDriver::class);
+});
+
+it('throws when the Azure key is missing', function () {
+    config()->set('translator.translators.azure', ['driver' => 'azure', 'key' => null]);
+
+    expect(fn () => app(TranslatorManager::class)->via('azure'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('resolves the Amazon driver', function () {
+    config()->set('translator.cache.enabled', false);
+    config()->set('translator.translators.amazon', [
+        'driver' => 'amazon',
+        'region' => 'us-east-1',
+        'key' => 'AKIA-test',
+        'secret' => 'secret',
+    ]);
+
+    expect(app(TranslatorManager::class)->via('amazon')->driver())->toBeInstanceOf(AmazonTranslateDriver::class);
+});
+
+it('throws when the Amazon region is missing', function () {
+    config()->set('translator.translators.amazon', ['driver' => 'amazon', 'region' => null]);
+
+    expect(fn () => app(TranslatorManager::class)->via('amazon'))
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('throws when the OpenAI driver has no model', function () {

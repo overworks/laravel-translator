@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Minhyung\LaravelTranslator;
 
 use Anthropic\Factory as AnthropicFactory;
+use Aws\Translate\TranslateClient;
 use Closure;
 use DeepL\DeepLClient;
 use Google\Auth\ApplicationDefaultCredentials;
@@ -18,6 +19,8 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Minhyung\LaravelTranslator\Contracts\Driver;
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Drivers\AmazonTranslateDriver;
+use Minhyung\LaravelTranslator\Drivers\AzureTranslatorDriver;
 use Minhyung\LaravelTranslator\Drivers\CachingDriver;
 use Minhyung\LaravelTranslator\Drivers\ClaudeDriver;
 use Minhyung\LaravelTranslator\Drivers\DeeplDriver;
@@ -276,6 +279,66 @@ class TranslatorManager
             $config['key'] ?? null,
             $name,
         );
+    }
+
+    /**
+     * Azure AI Translator (Translator REST API v3.0).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function createAzureDriver(string $name, array $config): Driver
+    {
+        if (empty($config['key'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires an Azure subscription key. Set translator.translators.{$name}.key."
+            );
+        }
+
+        return new AzureTranslatorDriver(
+            $this->container->make(HttpFactory::class),
+            (string) $config['key'],
+            $config['region'] ?? null,
+            (string) ($config['endpoint'] ?? 'https://api.cognitive.microsofttranslator.com'),
+            (string) ($config['api_version'] ?? '3.0'),
+            $name,
+        );
+    }
+
+    /**
+     * Amazon Translate (via aws/aws-sdk-php, an optional dependency).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function createAmazonDriver(string $name, array $config): Driver
+    {
+        if (! class_exists(TranslateClient::class)) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires the AWS SDK. Run: composer require aws/aws-sdk-php."
+            );
+        }
+
+        if (empty($config['region'])) {
+            throw new InvalidArgumentException(
+                "The [{$name}] translator requires an AWS region. Set translator.translators.{$name}.region."
+            );
+        }
+
+        $args = [
+            'region' => $config['region'],
+            'version' => $config['version'] ?? 'latest',
+        ];
+
+        // Explicit credentials are optional: without them the SDK falls back to
+        // its default provider chain (env vars, ~/.aws, instance role, ...).
+        if (! empty($config['key']) && ! empty($config['secret'])) {
+            $args['credentials'] = array_filter([
+                'key' => $config['key'],
+                'secret' => $config['secret'],
+                'token' => $config['token'] ?? null,
+            ], fn ($value): bool => $value !== null);
+        }
+
+        return new AmazonTranslateDriver(new TranslateClient($args), $name);
     }
 
     /**
