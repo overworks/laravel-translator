@@ -10,6 +10,7 @@ use Closure;
 use DeepL\DeepLClient;
 use Google\Auth\ApplicationDefaultCredentials;
 use Google\Auth\Credentials\ServiceAccountCredentials;
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Container\Container;
@@ -83,6 +84,8 @@ class TranslatorManager
             $name,
             $this->resolveDriver($name),
             $this->container->make(Dispatcher::class),
+            $this->container->make(BusDispatcher::class),
+            (array) $this->config()->get('translator.queue', []),
         );
     }
 
@@ -136,6 +139,8 @@ class TranslatorManager
             $name,
             $this->wrapWithRetry($config, $this->makeDriver($name, $config)),
             $this->container->make(Dispatcher::class),
+            $this->container->make(BusDispatcher::class),
+            (array) $this->config()->get('translator.queue', []),
         );
     }
 

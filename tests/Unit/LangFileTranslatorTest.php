@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
+use Minhyung\LaravelTranslator\Jobs\TranslateJob;
 use Minhyung\LaravelTranslator\Localization\LangFileTranslator;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -27,6 +28,16 @@ function bracketTranslator(): TranslatorContract
         public function translateInto(array $targetLangs, string $text, ?string $sourceLang = null, array $options = []): array
         {
             return [];
+        }
+
+        public function queue(string $text, string $targetLang, ?string $sourceLang = null, array $options = []): TranslateJob
+        {
+            throw new BadMethodCallException('not used');
+        }
+
+        public function queueBatch(array $texts, string $targetLang, ?string $sourceLang = null, array $options = []): TranslateJob
+        {
+            throw new BadMethodCallException('not used');
         }
 
         public function detect(string $text): LanguageDetection

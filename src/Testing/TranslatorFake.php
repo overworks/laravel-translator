@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Testing;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Collection;
@@ -66,7 +67,13 @@ class TranslatorFake extends TranslatorManager
      */
     protected function wrap(string $name): Translator
     {
-        return new Translator($name, new FakeDriver($name, $this), $this->container->make(Dispatcher::class));
+        return new Translator(
+            $name,
+            new FakeDriver($name, $this),
+            $this->container->make(Dispatcher::class),
+            $this->container->make(BusDispatcher::class),
+            (array) $this->config()->get('translator.queue', []),
+        );
     }
 
     /**

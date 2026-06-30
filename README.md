@@ -365,6 +365,29 @@ Translator::translate('Hello', 'ko'); // if deepl fails, try claude
 - Each child translator is **cached individually** (the `fallback` itself is not cached, to avoid double caching). Every fallback attempt is logged at `warning` level via a PSR logger and dispatches a `TranslationFellBack` event.
 - If every translator fails, an `AllTranslationDriversFailedException` is thrown; use `getErrors()` to get the underlying exception per translator.
 
+## Queued translation
+
+Translate in the background instead of inline with `queue()` / `queueBatch()`. Each dispatches a `TranslateJob` onto the queue:
+
+```php
+Translator::queue('Hello', 'ko', 'en');                 // default translator
+Translator::via('deepl')->queue('Hello', 'ko');         // a specific one
+Translator::via('deepl')->queueBatch(['Hello', 'Bye'], 'ko');
+```
+
+The job re-resolves the translator by name on the worker, so it always uses the current config and caching/retry wrapping. Because the work runs in the background, results are delivered through the [lifecycle events](#events) rather than returned — listen for `TranslationCompleted` / `BatchTranslationCompleted` to act on them. `TranslationFailed` is dispatched once the queue has exhausted the job's retries (from the job's `tries` or the worker's `--tries`), not on every failed attempt, so it reflects the ultimate failure.
+
+The job's connection, queue, `tries`, and `backoff` come from the `translator.queue` config — point translations at a dedicated queue/connection there. In tests, fake the queue and assert what was pushed:
+
+```php
+use Illuminate\Support\Facades\Queue;
+use Minhyung\LaravelTranslator\Jobs\TranslateJob;
+
+Queue::fake();
+Translator::queue('Hello', 'ko');
+Queue::assertPushed(TranslateJob::class);
+```
+
 ## Events
 
 The package dispatches lifecycle events you can listen for:

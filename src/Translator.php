@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Contracts\Events\Dispatcher;
 use Minhyung\LaravelTranslator\Contracts\DetectsLanguage;
 use Minhyung\LaravelTranslator\Contracts\Driver;
@@ -12,6 +13,7 @@ use Minhyung\LaravelTranslator\Contracts\Translator as TranslatorContract;
 use Minhyung\LaravelTranslator\Events\BatchTranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationCompleted;
 use Minhyung\LaravelTranslator\Events\TranslationFailed;
+use Minhyung\LaravelTranslator\Jobs\TranslateJob;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
 use RuntimeException;
@@ -27,10 +29,15 @@ use Throwable;
  */
 final class Translator implements TranslatorContract
 {
+    /**
+     * @param  array<string, mixed>  $queueConfig  Defaults for queued translations (connection, queue, tries, backoff).
+     */
     public function __construct(
         protected string $name,
         protected Driver $driver,
         protected ?Dispatcher $events = null,
+        protected ?BusDispatcher $bus = null,
+        protected array $queueConfig = [],
     ) {
     }
 
@@ -62,6 +69,62 @@ final class Translator implements TranslatorContract
         }
 
         return $results;
+    }
+
+    /**
+     * Queue a single translation to run in the background. Results are delivered
+     * through the lifecycle events (TranslationCompleted / TranslationFailed),
+     * which fire as the job runs on the worker.
+     *
+     * The job is dispatched onto the connection/queue from the `translator.queue`
+     * config; the dispatched {@see TranslateJob} is returned.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function queue(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): TranslateJob {
+        return $this->dispatchJob(new TranslateJob($this->name, $text, $targetLang, $sourceLang, $options));
+    }
+
+    /**
+     * Queue a batch translation to run in the background. Results are delivered
+     * through the BatchTranslationCompleted / TranslationFailed events.
+     *
+     * @param  array<array-key, string>  $texts
+     * @param  array<string, mixed>  $options
+     */
+    public function queueBatch(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): TranslateJob {
+        return $this->dispatchJob(new TranslateJob($this->name, $texts, $targetLang, $sourceLang, $options));
+    }
+
+    /**
+     * Apply the configured queue defaults to a translation job and dispatch it.
+     */
+    protected function dispatchJob(TranslateJob $job): TranslateJob
+    {
+        if (! empty($this->queueConfig['tries'])) {
+            $job->tries = (int) $this->queueConfig['tries'];
+        }
+
+        if (isset($this->queueConfig['backoff'])) {
+            $job->backoff = $this->queueConfig['backoff'];
+        }
+
+        $job->onConnection($this->queueConfig['connection'] ?? null)
+            ->onQueue($this->queueConfig['queue'] ?? null);
+
+        $this->bus?->dispatch($job);
+
+        return $job;
     }
 
     /**
@@ -108,12 +171,69 @@ final class Translator implements TranslatorContract
         ?string $sourceLang = null,
         array $options = []
     ): TranslationResult {
+        return $this->runTranslate($text, $targetLang, $sourceLang, $options, dispatchFailure: true);
+    }
+
+    public function translateBatch(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): array {
+        return $this->runTranslateBatch($texts, $targetLang, $sourceLang, $options, dispatchFailure: true);
+    }
+
+    /**
+     * Like translate(), but does not dispatch TranslationFailed on error (the
+     * success event still fires). A queued {@see TranslateJob} uses this so the
+     * failure event is emitted once, after the job exhausts its retries, instead
+     * of on every failed attempt.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function translateQuietly(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): TranslationResult {
+        return $this->runTranslate($text, $targetLang, $sourceLang, $options, dispatchFailure: false);
+    }
+
+    /**
+     * Batch counterpart to {@see translateQuietly()}.
+     *
+     * @param  array<array-key, string>  $texts
+     * @param  array<string, mixed>  $options
+     * @return array<array-key, TranslationResult>
+     */
+    public function translateBatchQuietly(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): array {
+        return $this->runTranslateBatch($texts, $targetLang, $sourceLang, $options, dispatchFailure: false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    protected function runTranslate(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang,
+        array $options,
+        bool $dispatchFailure
+    ): TranslationResult {
         try {
             $result = $this->driver->translate($text, $targetLang, $sourceLang, $options);
         } catch (Throwable $e) {
-            $this->events?->dispatch(
-                new TranslationFailed($this->name, $e, [$text], $targetLang, $sourceLang, $options)
-            );
+            if ($dispatchFailure) {
+                $this->events?->dispatch(
+                    new TranslationFailed($this->name, $e, [$text], $targetLang, $sourceLang, $options)
+                );
+            }
 
             throw $e;
         }
@@ -125,18 +245,26 @@ final class Translator implements TranslatorContract
         return $result;
     }
 
-    public function translateBatch(
+    /**
+     * @param  array<array-key, string>  $texts
+     * @param  array<string, mixed>  $options
+     * @return array<array-key, TranslationResult>
+     */
+    protected function runTranslateBatch(
         array $texts,
         string $targetLang,
-        ?string $sourceLang = null,
-        array $options = []
+        ?string $sourceLang,
+        array $options,
+        bool $dispatchFailure
     ): array {
         try {
             $results = $this->driver->translateBatch($texts, $targetLang, $sourceLang, $options);
         } catch (Throwable $e) {
-            $this->events?->dispatch(
-                new TranslationFailed($this->name, $e, $texts, $targetLang, $sourceLang, $options)
-            );
+            if ($dispatchFailure) {
+                $this->events?->dispatch(
+                    new TranslationFailed($this->name, $e, $texts, $targetLang, $sourceLang, $options)
+                );
+            }
 
             throw $e;
         }

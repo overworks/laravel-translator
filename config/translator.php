@@ -165,4 +165,28 @@ return [
         'prefix' => 'translator',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Queued Translation
+    |--------------------------------------------------------------------------
+    |
+    | Defaults applied to Translator::queue() / queueBatch(), which run a
+    | translation in the background via a TranslateJob. Each call returns a
+    | PendingDispatch, so these can be overridden per call by chaining
+    | onConnection()/onQueue()/delay(). Results arrive through the translation
+    | lifecycle events.
+    |
+    */
+
+    'queue' => [
+        // Queue connection and name. Null uses the application defaults.
+        'connection' => env('TRANSLATOR_QUEUE_CONNECTION'),
+        'queue' => env('TRANSLATOR_QUEUE'),
+
+        // Max attempts per job, and optional backoff (seconds, or an array of
+        // per-attempt seconds) between retries.
+        'tries' => env('TRANSLATOR_QUEUE_TRIES', 1),
+        // 'backoff' => 30,
+    ],
+
 ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Minhyung\LaravelTranslator\Contracts;
 
+use Minhyung\LaravelTranslator\Jobs\TranslateJob;
 use Minhyung\LaravelTranslator\Support\Language;
 use Minhyung\LaravelTranslator\Support\LanguageDetection;
 use Minhyung\LaravelTranslator\Support\TranslationResult;
@@ -60,6 +61,32 @@ interface Translator
         ?string $sourceLang = null,
         array $options = []
     ): array;
+
+    /**
+     * Queue a single translation to run in the background. Results are delivered
+     * through the lifecycle events. Returns the dispatched {@see TranslateJob}.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function queue(
+        string $text,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): TranslateJob;
+
+    /**
+     * Queue a batch translation to run in the background.
+     *
+     * @param  array<array-key, string>  $texts
+     * @param  array<string, mixed>  $options
+     */
+    public function queueBatch(
+        array $texts,
+        string $targetLang,
+        ?string $sourceLang = null,
+        array $options = []
+    ): TranslateJob;
 
     /**
      * Detect the language of $text.

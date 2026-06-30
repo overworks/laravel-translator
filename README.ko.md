@@ -360,6 +360,29 @@ Translator::translate('Hello', 'ko'); // deepl 실패 시 claude 시도
 - 각 자식 translator는 **개별적으로 캐싱**되며(`fallback` 자체는 이중 캐시를 피하기 위해 캐싱하지 않음), 전환 시도는 PSR 로거로 `warning` 로깅되고 `TranslationFellBack` 이벤트를 디스패치합니다.
 - 모든 translator가 실패하면 `AllTranslationDriversFailedException`이 발생하고, `getErrors()`로 translator별 원인 예외를 얻을 수 있습니다.
 
+## 큐 기반 비동기 번역
+
+인라인 대신 백그라운드에서 번역하려면 `queue()` / `queueBatch()`를 사용합니다. 각각 `TranslateJob`을 큐에 디스패치합니다:
+
+```php
+Translator::queue('Hello', 'ko', 'en');                 // 기본 translator
+Translator::via('deepl')->queue('Hello', 'ko');         // 특정 translator
+Translator::via('deepl')->queueBatch(['Hello', 'Bye'], 'ko');
+```
+
+Job은 워커에서 이름으로 translator를 다시 해석하므로 항상 현재 설정과 캐싱/재시도 래핑을 사용합니다. 작업이 백그라운드에서 실행되므로 결과는 반환되지 않고 [라이프사이클 이벤트](#이벤트)로 전달됩니다 — `TranslationCompleted` / `BatchTranslationCompleted`를 리스닝해 처리하세요. `TranslationFailed`는 매 실패 시도마다가 아니라 큐가 재시도를 모두 소진한 뒤(Job의 `tries` 또는 워커의 `--tries` 기준) 한 번 디스패치되어 최종 실패를 반영합니다.
+
+Job의 connection·queue·`tries`·`backoff`는 `translator.queue` 설정에서 옵니다 — 번역 작업을 전용 큐/커넥션으로 라우팅하려면 거기서 지정하세요. 테스트에서는 큐를 페이크하고 푸시 여부를 단언합니다:
+
+```php
+use Illuminate\Support\Facades\Queue;
+use Minhyung\LaravelTranslator\Jobs\TranslateJob;
+
+Queue::fake();
+Translator::queue('Hello', 'ko');
+Queue::assertPushed(TranslateJob::class);
+```
+
 ## 이벤트
 
 라이프사이클 이벤트를 디스패치하므로 리스닝할 수 있습니다:
